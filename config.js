@@ -1,8 +1,0 @@
-// ============================================================
-// KONFIGURASI - WAJIB DIISI
-// ============================================================
-// Ganti nilai di bawah dengan URL Web App Apps Script Anda,
-// diambil dari: Apps Script editor > Deploy > Manage deployments
-// Formatnya diakhiri "/exec", contoh:
-// https://script.google.com/macros/s/AKfycbXXXXXXXXXXXXXXXXXXXXXXXX/exec
-const API_BASE_URL = "https://script.google.com/macros/s/AKfycbw6_oGl_Wwb0frblNKRZqz35V-U2GI6WXxqBzDjNWNrahL35FVviWbf4H4Bn7rqEud1XQ/exec";
