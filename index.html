@@ -1343,12 +1343,13 @@
 <div class="modal fade" id="modalUserForm" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header"><h6 class="modal-title fw-semibold">Tambah User</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h6 class="modal-title fw-semibold" id="userFormTitle">Tambah User</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
+        <input type="hidden" id="userFormId">
         <div class="mb-2"><label class="form-label small">Nama</label><input class="form-control" id="userFormNama"></div>
         <div class="mb-2"><label class="form-label small">Username</label><input class="form-control" id="userFormUsername"></div>
         <div class="mb-2">
-          <label class="form-label small">Password</label>
+          <label class="form-label small">Password <span id="userFormPasswordHint" class="text-muted" style="display:none;">(kosongkan jika tidak diubah)</span></label>
           <div class="input-group">
             <input type="password" class="form-control" id="userFormPassword">
             <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('userFormPassword', this)">
@@ -1463,17 +1464,68 @@
           <td>${u.Nama}</td><td>${u.Username}</td><td>${u.Role}</td>
           <td><span class="badge ${u.Status === 'Aktif' ? 'bg-success' : 'bg-secondary'}">${u.Status}</span></td>
           <td>
+            <button class="btn btn-sm btn-outline-secondary" onclick='editUser(${JSON.stringify(u)})' title="Edit user"><i class="fa-solid fa-pen"></i></button>
             <label class="btn btn-sm btn-outline-primary mb-0" title="Ganti foto profil">
               <i class="fa-solid fa-camera"></i>
               <input type="file" accept="image/*" hidden onchange="handleUserPhotoUpload('${u.ID}', this.files[0])">
             </label>
-            <button class="btn btn-sm btn-outline-warning" onclick="toggleUserStatus('${u.ID}','${u.Status}')"><i class="fa-solid fa-power-off"></i></button>
+            <button class="btn btn-sm btn-outline-warning" onclick="toggleUserStatus('${u.ID}','${u.Status}')" title="Aktifkan/nonaktifkan"><i class="fa-solid fa-power-off"></i></button>
           </td>
         </tr>
       `).join('') || '<tr><td colspan="6" class="text-center text-muted">Belum ada user.</td></tr>';
     } catch (err) {
       toastError('Gagal terhubung ke server: ' + err);
       document.getElementById('userTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal terhubung ke server.</td></tr>';
+    }
+  }
+
+  function openUserForm() {
+    document.getElementById('userFormId').value = '';
+    document.getElementById('userFormNama').value = '';
+    document.getElementById('userFormUsername').value = '';
+    document.getElementById('userFormPassword').value = '';
+    document.getElementById('userFormRole').value = 'Kasir';
+    document.getElementById('userFormPasswordHint').style.display = 'none';
+    document.getElementById('userFormTitle').textContent = 'Tambah User';
+    new bootstrap.Modal('#modalUserForm').show();
+  }
+
+  function editUser(u) {
+    document.getElementById('userFormId').value = u.ID;
+    document.getElementById('userFormNama').value = u.Nama;
+    document.getElementById('userFormUsername').value = u.Username;
+    document.getElementById('userFormPassword').value = '';
+    document.getElementById('userFormRole').value = u.Role;
+    document.getElementById('userFormPasswordHint').style.display = 'inline';
+    document.getElementById('userFormTitle').textContent = 'Edit User';
+    new bootstrap.Modal('#modalUserForm').show();
+  }
+
+  async function submitUserForm() {
+    const token = getToken();
+    const id = document.getElementById('userFormId').value;
+    const payload = {
+      nama: document.getElementById('userFormNama').value.trim(),
+      username: document.getElementById('userFormUsername').value.trim(),
+      password: document.getElementById('userFormPassword').value,
+      role: document.getElementById('userFormRole').value
+    };
+    if (!payload.nama || !payload.username) { toastError('Nama dan username wajib diisi.'); return; }
+    if (!id && !payload.password) { toastError('Password wajib diisi untuk user baru.'); return; }
+
+    showLoading('Menyimpan...');
+    try {
+      const res = id
+        ? await api('updateUser', token, id, payload)
+        : await api('createUser', token, payload);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      bootstrap.Modal.getInstance(document.getElementById('modalUserForm')).hide();
+      toastSuccess(res.message);
+      loadUserTable();
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
     }
   }
 
@@ -1491,37 +1543,6 @@
     } catch (err) {
       hideLoading();
       toastError(typeof err === 'string' ? err : 'Gagal mengunggah foto: ' + err);
-    }
-  }
-
-  function openUserForm() {
-    document.getElementById('userFormNama').value = '';
-    document.getElementById('userFormUsername').value = '';
-    document.getElementById('userFormPassword').value = '';
-    new bootstrap.Modal('#modalUserForm').show();
-  }
-
-  async function submitUserForm() {
-    const token = getToken();
-    const payload = {
-      nama: document.getElementById('userFormNama').value.trim(),
-      username: document.getElementById('userFormUsername').value.trim(),
-      password: document.getElementById('userFormPassword').value,
-      role: document.getElementById('userFormRole').value
-    };
-    if (!payload.nama || !payload.username || !payload.password) { toastError('Semua field wajib diisi.'); return; }
-
-    showLoading('Menyimpan...');
-    try {
-      const res = await api('createUser', token, payload);
-      hideLoading();
-      if (!res.success) { toastError(res.message); return; }
-      bootstrap.Modal.getInstance(document.getElementById('modalUserForm')).hide();
-      toastSuccess(res.message);
-      loadUserTable();
-    } catch (err) {
-      hideLoading();
-      toastError('Gagal terhubung ke server: ' + err);
     }
   }
 
@@ -1700,5 +1721,8 @@
       }
     })();
   </script>
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
