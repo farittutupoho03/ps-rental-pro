@@ -1,95 +1,1704 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PS Rental Pro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+  :root {
+    --brand-primary: #4f46e5;
+    --brand-secondary: #06b6d4;
+    --brand-success: #22c55e;
+    --brand-danger: #ef4444;
+    --brand-warning: #f59e0b;
+    --bg-body: #f3f4f9;
+    --bg-card: #ffffff;
+    --text-main: #1f2333;
+    --text-muted: #6b7280;
+    --border-color: #e5e7eb;
+    --sidebar-bg: #1e1b3a;
+    --sidebar-text: #cbd5e1;
+  }
+
+  [data-theme="dark"] {
+    --bg-body: #12141c;
+    --bg-card: #1b1e2b;
+    --text-main: #e5e7eb;
+    --text-muted: #9ca3af;
+    --border-color: #2b2f3f;
+    --sidebar-bg: #0d0e17;
+  }
+
+  * { font-family: 'Poppins', sans-serif; }
+
+  body {
+    background: var(--bg-body);
+    color: var(--text-main);
+    transition: background .25s ease, color .25s ease;
+  }
+
+  .app-sidebar {
+    background: linear-gradient(180deg, var(--sidebar-bg), #2a1f5e);
+    min-height: 100vh;
+    color: var(--sidebar-text);
+    position: fixed;
+    width: 240px;
+    z-index: 1030;
+    transition: left .25s ease;
+  }
+  .app-sidebar .brand { font-weight: 700; font-size: 1.15rem; color: #fff; }
+  .app-sidebar .nav-link {
+    color: var(--sidebar-text);
+    border-radius: 10px;
+    margin: 2px 10px;
+    padding: .6rem .9rem;
+    font-weight: 500;
+    transition: all .15s ease;
+  }
+  .app-sidebar .nav-link i { width: 22px; text-align: center; margin-right: 8px; }
+  .app-sidebar .nav-link:hover, .app-sidebar .nav-link.active {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  .app-main { margin-left: 240px; transition: margin-left .25s ease; }
+
+  @media (max-width: 991px) {
+    .app-sidebar { left: -240px; }
+    .app-sidebar.show { left: 0; }
+    .app-main { margin-left: 0; }
+  }
+
+  .app-navbar {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky; top: 0; z-index: 1020;
+  }
+
+  .card-glass {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 18px rgba(20,20,50,0.05);
+  }
+
+  .stat-card {
+    border-radius: 16px;
+    padding: 1.1rem 1.3rem;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card i { font-size: 1.8rem; opacity: .55; }
+  .stat-card.grad-1 { background: linear-gradient(135deg, #4f46e5, #7c3aed); }
+  .stat-card.grad-2 { background: linear-gradient(135deg, #06b6d4, #0ea5e9); }
+  .stat-card.grad-3 { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  .stat-card.grad-4 { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+
+  .ps-card {
+    border-radius: 16px;
+    padding: 1rem;
+    cursor: pointer;
+    color: #fff;
+    text-align: center;
+    transition: transform .15s ease;
+    min-height: 130px;
+  }
+  .ps-card:hover { transform: translateY(-4px); }
+  .ps-card.kosong { background: linear-gradient(135deg, #22c55e, #16a34a); }
+  .ps-card.dipakai { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+  .ps-card.maintenance { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .ps-card .badge-status { background: rgba(255,255,255,.25); }
+  .ps-card .timer { font-size: 1.4rem; font-weight: 600; }
+
+  .skeleton {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);
+    background-size: 400% 100%;
+    animation: skeleton-loading 1.4s ease infinite;
+    border-radius: 8px;
+  }
+  @keyframes skeleton-loading { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
+
+  .table thead th { font-weight: 600; color: var(--text-muted); border-bottom-width: 1px; }
+  .table td, .table th { vertical-align: middle; color: var(--text-main); }
+
+  .fade-in { animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  #receiptArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #receiptArea, #receiptArea * { visibility: visible; }
+    #receiptArea {
+      display: block !important;
+      position: absolute; left: 0; top: 0;
+      width: 58mm; font-size: 11px; font-family: 'Courier New', monospace;
+    }
+  }
+</style>
+
+  
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; overflow: hidden; }
-
-    #loadingScreen {
-      position: fixed; inset: 0;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    #loginView {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       background: radial-gradient(circle at top left, #4f46e5, #1e1b3a 60%);
-      color: #fff;
-      font-family: -apple-system, Segoe UI, Roboto, sans-serif;
-      z-index: 10;
-      transition: opacity .3s ease;
     }
-    .spinner {
-      width: 42px; height: 42px;
-      border: 4px solid rgba(255,255,255,0.25);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin .8s linear infinite;
-      margin-bottom: 1rem;
+    .login-card {
+      width: 100%; max-width: 380px;
+      background: rgba(255,255,255,0.97);
+      border-radius: 20px;
+      padding: 2.2rem 2rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    #appFrame {
-      position: fixed; inset: 0;
-      width: 100%; height: 100%;
-      border: none;
+    .login-logo {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: linear-gradient(135deg, #4f46e5, #06b6d4);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 1.7rem; margin: 0 auto 1rem;
     }
-
-    #errorBox {
-      display: none;
-      position: fixed; inset: 0;
-      align-items: center; justify-content: center;
-      flex-direction: column;
-      background: #12141c; color: #e5e7eb;
-      font-family: -apple-system, Segoe UI, Roboto, sans-serif;
-      text-align: center; padding: 2rem;
-      z-index: 11;
+    .btn-brand {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff; border: none; border-radius: 10px; padding: .65rem;
+      font-weight: 600;
     }
-    #errorBox a { color: #7c9cff; }
+    .btn-brand:hover { color: #fff; opacity: .92; }
   </style>
 </head>
 <body>
 
-  <div id="loadingScreen">
-    <div class="spinner"></div>
-    <p>Memuat PS Rental Pro...</p>
-  </div>
+  <!-- ============ VIEW: LOGIN ============ -->
+  <div id="loginView" style="display:none;">
+    <div class="login-card fade-in">
+      <img id="loginLogoImg" src="" alt="Logo" style="width:64px;height:64px;object-fit:cover;border-radius:16px;display:none;" class="mx-auto mb-3">
+      <div id="loginLogoIcon" class="login-logo"><i class="fa-solid fa-gamepad"></i></div>
+      <h4 class="text-center fw-bold mb-1" id="loginBrandName">PS Rental Pro</h4>
+      <p class="text-center text-muted mb-4" style="font-size:.9rem;">Masuk untuk mengelola rental Anda</p>
 
-  <!--
-    GANTI URL DI BAWAH INI dengan URL deployment Web App Apps Script Anda.
-    Contoh: https://script.google.com/macros/s/AKfycb.../exec
-  -->
-  <iframe
-    id="appFrame"
-    src="https://script.google.com/macros/s/AKfycbw6_oGl_Wwb0frblNKRZqz35V-U2GI6WXxqBzDjNWNrahL35FVviWbf4H4Bn7rqEud1XQ/exec"
-    title="PS Rental Pro"
-    allow="clipboard-write"
-  ></iframe>
-
-  <div id="errorBox">
-    <div>
-      <h2>Aplikasi belum terhubung</h2>
-      <p>URL Web App Apps Script belum diatur di file <code>index.html</code> pada baris <code>src="..."</code>.</p>
+      <form id="loginForm">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Username</label>
+          <input type="text" class="form-control" id="username" placeholder="Masukkan username" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Password</label>
+          <div class="input-group">
+            <input type="password" class="form-control" id="password" placeholder="Masukkan password" required>
+            <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('password', this)">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" id="rememberMe">
+          <label class="form-check-label small" for="rememberMe">Ingat saya</label>
+        </div>
+        <button type="submit" class="btn btn-brand w-100">
+          <i class="fa-solid fa-right-to-bracket me-2"></i>Masuk
+        </button>
+      </form>
+      <p class="text-center text-muted mt-4 mb-0" style="font-size:.75rem;">
+        &copy; <span id="loginYear"></span> PS Rental Pro AppsScript
+      </p>
     </div>
   </div>
 
-  <script>
-    var frame = document.getElementById('appFrame');
-    var loading = document.getElementById('loadingScreen');
-    var errorBox = document.getElementById('errorBox');
+  <!-- ============ VIEW: APLIKASI ============ -->
+  <div id="appView" style="display:none;">
+    <div class="app-sidebar p-3">
+  <div class="brand d-flex align-items-center mb-4 px-2">
+    <img id="sidebarLogo" src="" alt="Logo" style="width:26px;height:26px;object-fit:cover;border-radius:6px;display:none;" class="me-2">
+    <i id="sidebarLogoIcon" class="fa-solid fa-gamepad me-2"></i>
+    <span id="sidebarBrandName">PS Rental Pro</span>
+  </div>
+  <nav class="nav flex-column" id="sidebarNav">
+    <a class="nav-link active" href="#" data-page="dashboard"><i class="fa-solid fa-chart-line"></i>Dashboard</a>
+    <a class="nav-link" href="#" data-page="kasir"><i class="fa-solid fa-cash-register"></i>Kasir</a>
+    <a class="nav-link" href="#" data-page="playstation"><i class="fa-solid fa-gamepad"></i>PlayStation</a>
+    <a class="nav-link" href="#" data-page="pelanggan"><i class="fa-solid fa-users"></i>Pelanggan</a>
+    <a class="nav-link" href="#" data-page="produk"><i class="fa-solid fa-box"></i>Produk</a>
+    <a class="nav-link" href="#" data-page="pengeluaran"><i class="fa-solid fa-money-bill-wave"></i>Pengeluaran</a>
+    <a class="nav-link" href="#" data-page="laporan"><i class="fa-solid fa-file-lines"></i>Laporan</a>
+    <a class="nav-link role-owner-only" href="#" data-page="pengaturan" style="display:none;"><i class="fa-solid fa-gear"></i>Pengaturan</a>
+    <hr class="text-white-50">
+    <a class="nav-link" href="#" onclick="doLogout(); return false;"><i class="fa-solid fa-right-from-bracket"></i>Keluar</a>
+  </nav>
+</div>
 
-    if (frame.src.indexOf('GANTI_DENGAN_URL_WEB_APP_ANDA') !== -1) {
-      loading.style.display = 'none';
-      errorBox.style.display = 'flex';
+
+    <div class="app-main">
+      <nav class="app-navbar d-flex align-items-center justify-content-between px-3 py-2">
+  <div class="d-flex align-items-center gap-3">
+    <button class="btn btn-sm btn-light d-lg-none" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    <h5 class="mb-0 fw-semibold" id="pageTitle">Dashboard</h5>
+  </div>
+  <div class="d-flex align-items-center gap-2">
+    <button class="btn btn-sm btn-light" onclick="toggleDarkMode()" title="Dark mode">
+      <i class="fa-solid fa-moon"></i>
+    </button>
+    <div class="text-end d-none d-sm-block">
+      <div class="fw-semibold small" id="navUserName">-</div>
+      <div class="text-muted" style="font-size:.72rem;" id="navUserRole">-</div>
+    </div>
+    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:38px;height:38px;">
+      <i class="fa-solid fa-user"></i>
+    </div>
+  </div>
+</nav>
+
+
+      <main class="p-3 p-lg-4">
+        <div class="fade-in" id="pageWrapper">
+          <div id="page-dashboard" class="page-section">
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card grad-1">
+        <i class="fa-solid fa-receipt position-absolute end-0 top-0 m-3"></i>
+        <div class="small opacity-75">Transaksi Hari Ini</div>
+        <div class="fs-3 fw-bold" id="statTrxHariIni">-</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card grad-2">
+        <i class="fa-solid fa-coins position-absolute end-0 top-0 m-3"></i>
+        <div class="small opacity-75">Pendapatan Hari Ini</div>
+        <div class="fs-5 fw-bold" id="statPendapatanHariIni">-</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card grad-3">
+        <i class="fa-solid fa-wallet position-absolute end-0 top-0 m-3"></i>
+        <div class="small opacity-75">Pendapatan Bulan Ini</div>
+        <div class="fs-5 fw-bold" id="statPendapatanBulanIni">-</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card grad-4">
+        <i class="fa-solid fa-users position-absolute end-0 top-0 m-3"></i>
+        <div class="small opacity-75">Member Terdaftar</div>
+        <div class="fs-3 fw-bold" id="statMember">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+      <div class="card-glass p-3 text-center">
+        <div class="text-muted small">PS Dipakai</div>
+        <div class="fs-4 fw-bold text-danger" id="statPSDipakai">-</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card-glass p-3 text-center">
+        <div class="text-muted small">PS Kosong</div>
+        <div class="fs-4 fw-bold text-success" id="statPSKosong">-</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card-glass p-3 text-center">
+        <div class="text-muted small">Total Pelanggan</div>
+        <div class="fs-4 fw-bold" id="statPelanggan">-</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="card-glass p-3 text-center">
+        <div class="text-muted small">Produk Terjual Hari Ini</div>
+        <div class="fs-4 fw-bold" id="statProdukTerjual">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card-glass p-3 mb-3">
+        <h6 class="fw-semibold mb-3">Grafik Pendapatan (7 Hari Terakhir)</h6>
+        <canvas id="chartPendapatan" height="110"></canvas>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card-glass p-3 mb-3">
+        <h6 class="fw-semibold mb-3">Aktivitas Terbaru</h6>
+        <ul class="list-unstyled small mb-0" id="listAktivitas" style="max-height:280px; overflow-y:auto;">
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let chartPendapatanInstance = null;
+
+  async function loadDashboard() {
+    const token = getToken();
+    const res = await api('getDashboardStats', token);
+    if (!res.success) { toastError(res.message); return; }
+    const d = res.data;
+
+    document.getElementById('statTrxHariIni').textContent = d.totalTransaksiHariIni;
+    document.getElementById('statPendapatanHariIni').textContent = formatRupiah(d.pendapatanHariIni);
+    document.getElementById('statPendapatanBulanIni').textContent = formatRupiah(d.pendapatanBulanIni);
+    document.getElementById('statMember').textContent = d.jumlahMember;
+    document.getElementById('statPSDipakai').textContent = d.psTerpakai;
+    document.getElementById('statPSKosong').textContent = d.psKosong;
+    document.getElementById('statPelanggan').textContent = d.jumlahPelanggan;
+    document.getElementById('statProdukTerjual').textContent = d.produkTerjualHariIni;
+
+    const ctx = document.getElementById('chartPendapatan');
+    const labels = d.grafikPendapatan.map(x => x.tanggal.slice(5));
+    const values = d.grafikPendapatan.map(x => x.total);
+    if (chartPendapatanInstance) chartPendapatanInstance.destroy();
+    chartPendapatanInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Pendapatan',
+          data: values,
+          borderColor: '#4f46e5',
+          backgroundColor: 'rgba(79,70,229,0.12)',
+          fill: true,
+          tension: .35
+        }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => 'Rp' + v.toLocaleString('id-ID') } } } }
+    });
+
+    const list = document.getElementById('listAktivitas');
+    list.innerHTML = d.aktivitasTerbaru.map(a => `
+      <li class="mb-2 pb-2 border-bottom">
+        <div class="fw-semibold">${a.Aksi}</div>
+        <div class="text-muted" style="font-size:.72rem;">${a.User} &middot; ${formatDateTimeShort(a.Waktu)}</div>
+      </li>
+    `).join('') || '<li class="text-muted">Belum ada aktivitas.</li>';
+  }
+</script>
+
+          <div id="page-kasir" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="fw-semibold mb-0">Unit PlayStation</h6>
+    <button class="btn btn-sm btn-outline-secondary" onclick="loadKasirUnits()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+  </div>
+  <div class="row g-3" id="psCardGrid">
+    <div class="col-6 col-md-4 col-lg-3"><div class="skeleton" style="height:130px;"></div></div>
+  </div>
+</div>
+
+<!-- Modal Mulai Sesi -->
+<div class="modal fade" id="modalStart" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-semibold">Mulai Sesi Rental &mdash; <span id="startUnitName"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Nama Pelanggan</label>
+          <input type="text" class="form-control" id="startCustomerName" list="customerList" placeholder="Ketik atau pilih pelanggan">
+          <datalist id="customerList"></datalist>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Tarif</label>
+          <select class="form-select" id="startTarifType">
+            <option value="Reguler">Reguler</option>
+            <option value="Member">Member</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="submitStartSession()">
+          <i class="fa-solid fa-play me-1"></i>Mulai Main
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Sesi Berjalan -->
+<div class="modal fade" id="modalSession" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-semibold">Sesi Rental &mdash; <span id="sessionUnitName"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row mb-3">
+          <div class="col-6">
+            <div class="text-muted small">Pelanggan</div>
+            <div class="fw-semibold" id="sessionCustomer">-</div>
+          </div>
+          <div class="col-6 text-end">
+            <div class="text-muted small">Durasi Berjalan</div>
+            <div class="fw-bold text-primary" id="sessionTimer">00:00:00</div>
+          </div>
+        </div>
+
+        <ul class="nav nav-tabs" id="orderTabs">
+          <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabMakanan">Makanan</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabMinuman">Minuman</button></li>
+          <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabAksesoris">Aksesoris</button></li>
+        </ul>
+        <div class="tab-content border border-top-0 rounded-bottom p-2 mb-3" style="max-height:180px; overflow-y:auto;">
+          <div class="tab-pane fade show active" id="tabMakanan"></div>
+          <div class="tab-pane fade" id="tabMinuman"></div>
+          <div class="tab-pane fade" id="tabAksesoris"></div>
+        </div>
+
+        <h6 class="fw-semibold small">Item Dipesan</h6>
+        <table class="table table-sm">
+          <thead><tr><th>Item</th><th>Qty</th><th>Harga</th><th class="text-end">Subtotal</th></tr></thead>
+          <tbody id="sessionOrderBody"><tr><td colspan="4" class="text-muted text-center">Belum ada item</td></tr></tbody>
+        </table>
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <button class="btn btn-outline-warning btn-sm" onclick="openCheckoutModal()"><i class="fa-solid fa-cash-register me-1"></i>Selesai & Checkout</button>
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Checkout -->
+<div class="modal fade" id="modalCheckout" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-semibold">Checkout Transaksi</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2 mb-2">
+          <div class="col-6">
+            <label class="form-label small">Diskon Nominal</label>
+            <input type="number" class="form-control" id="chkDiskonNominal" placeholder="0">
+          </div>
+          <div class="col-6">
+            <label class="form-label small">Diskon Persen (%)</label>
+            <input type="number" class="form-control" id="chkDiskonPersen" placeholder="0">
+          </div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">Metode Pembayaran</label>
+          <select class="form-select" id="chkMetodePembayaran">
+            <option>Tunai</option>
+            <option>QRIS</option>
+            <option>Transfer</option>
+            <option>Debit</option>
+            <option>E-Wallet</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-success" onclick="submitCheckout()"><i class="fa-solid fa-check me-1"></i>Konfirmasi Bayar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Struk cetak (tersembunyi, hanya tampil saat print) -->
+<div id="receiptArea"></div>
+
+<script>
+  let currentSessionUnit = null;
+  let currentSessionTrx = null;
+  let sessionTimerInterval = null;
+  let productsCache = null;
+
+  async function loadKasirUnits() {
+    const token = getToken();
+    const [unitsRes, custRes] = await Promise.all([
+      api('listPlaystations', token),
+      api('listCustomers', token, '')
+    ]);
+    if (!unitsRes.success) { toastError(unitsRes.message); return; }
+
+    document.getElementById('customerList').innerHTML = (custRes.data || [])
+      .map(c => `<option value="${c.Nama}">`).join('');
+
+    const grid = document.getElementById('psCardGrid');
+    grid.innerHTML = unitsRes.data.map(u => {
+      const statusClass = u.Status === 'Kosong' ? 'kosong' : (u.Status === 'Dipakai' ? 'dipakai' : 'maintenance');
+      const icon = u.Jenis === 'PS5' ? 'fa-gamepad' : 'fa-gamepad';
+      return `
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="ps-card ${statusClass}" onclick="handlePsCardClick('${u.ID}','${u.NamaPS}','${u.Status}')">
+            <i class="fa-solid ${icon} fs-3 mb-2"></i>
+            <div class="fw-bold">${u.NamaPS}</div>
+            <div class="small opacity-75">${u.Jenis} &middot; Ruang ${u.NomorRuangan || '-'}</div>
+            <span class="badge badge-status mt-2">${u.Status}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function handlePsCardClick(id, nama, status) {
+    if (status === 'Kosong') {
+      currentSessionUnit = { id, nama };
+      document.getElementById('startUnitName').textContent = nama;
+      document.getElementById('startCustomerName').value = '';
+      new bootstrap.Modal('#modalStart').show();
+    } else if (status === 'Dipakai') {
+      await openSessionModal(id, nama);
     } else {
-      frame.addEventListener('load', function () {
-        loading.style.opacity = '0';
-        setTimeout(function () { loading.style.display = 'none'; }, 300);
-      });
-      // Jaga-jaga jika event load tidak terpicu (beberapa browser dengan iframe cross-origin).
-      setTimeout(function () {
-        loading.style.opacity = '0';
-        setTimeout(function () { loading.style.display = 'none'; }, 300);
-      }, 4000);
+      toastError('Unit sedang dalam status Maintenance.');
     }
+  }
+
+  async function submitStartSession() {
+    const namaPelanggan = document.getElementById('startCustomerName').value.trim();
+    const tarifType = document.getElementById('startTarifType').value;
+    if (!namaPelanggan) { toastError('Nama pelanggan wajib diisi.'); return; }
+
+    showLoading('Memulai sesi...');
+    const token = getToken();
+
+    // Tambahkan pelanggan baru otomatis jika belum ada di datalist.
+    const existing = Array.from(document.getElementById('customerList').options).some(o => o.value === namaPelanggan);
+    if (!existing) {
+      await api('createCustomer', token, { nama: namaPelanggan });
+    }
+
+    const res = await api('startRentalSession', token, { nomorPS: currentSessionUnit.id, namaPelanggan, tarifType });
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+
+    bootstrap.Modal.getInstance(document.getElementById('modalStart')).hide();
+    toastSuccess('Sesi dimulai untuk ' + namaPelanggan);
+    loadKasirUnits();
+  }
+
+  async function openSessionModal(nomorPS, nama) {
+    const token = getToken();
+    const res = await api('getActiveSession', token, nomorPS);
+    if (!res.success || !res.data) { toastError('Sesi tidak ditemukan.'); return; }
+
+    currentSessionUnit = { id: nomorPS, nama };
+    currentSessionTrx = res.data.transaksi;
+    document.getElementById('sessionUnitName').textContent = nama;
+    document.getElementById('sessionCustomer').textContent = currentSessionTrx.NamaPelanggan;
+
+    renderOrderTable(res.data.detail);
+    await loadProductTabs();
+    startSessionTimer(new Date(currentSessionTrx.JamMasuk));
+    new bootstrap.Modal('#modalSession').show();
+  }
+
+  function renderOrderTable(details) {
+    const body = document.getElementById('sessionOrderBody');
+    if (!details.length) { body.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Belum ada item</td></tr>'; return; }
+    body.innerHTML = details.map(d => `
+      <tr><td>${d.Produk}</td><td>${d.Qty}</td><td>${formatRupiah(d.Harga)}</td><td class="text-end">${formatRupiah(d.Subtotal)}</td></tr>
+    `).join('');
+  }
+
+  function startSessionTimer(jamMasuk) {
+    clearInterval(sessionTimerInterval);
+    sessionTimerInterval = setInterval(() => {
+      const diffMs = Date.now() - jamMasuk.getTime();
+      const h = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
+      const m = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
+      const s = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
+      document.getElementById('sessionTimer').textContent = `${h}:${m}:${s}`;
+    }, 1000);
+  }
+
+  document.getElementById('modalSession').addEventListener('hidden.bs.modal', () => clearInterval(sessionTimerInterval));
+
+  async function loadProductTabs() {
+    const token = getToken();
+    if (!productsCache) {
+      const res = await api('listAllProductsForKasir', token);
+      if (!res.success) { toastError(res.message); return; }
+      productsCache = res.data;
+    }
+    renderProductTab('Makanan', 'tabMakanan');
+    renderProductTab('Minuman', 'tabMinuman');
+    renderProductTab('Aksesoris', 'tabAksesoris');
+  }
+
+  function renderProductTab(kategori, elId) {
+    const items = productsCache[kategori] || [];
+    document.getElementById(elId).innerHTML = items.map(p => `
+      <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+        <div>
+          <div class="small fw-semibold">${p.Nama}</div>
+          <div class="text-muted" style="font-size:.72rem;">${formatRupiah(p.Harga)} &middot; Stok ${p.Stok}</div>
+        </div>
+        <button class="btn btn-sm btn-outline-primary" onclick="addItem('${kategori}','${p.ID}')"><i class="fa-solid fa-plus"></i></button>
+      </div>
+    `).join('') || '<div class="text-muted small text-center py-2">Tidak ada produk.</div>';
+  }
+
+  async function addItem(kategori, produkId) {
+    const token = getToken();
+    const res = await api('addOrderItem', token, currentSessionTrx.IDTransaksi, kategori, produkId, 1);
+    if (!res.success) { toastError(res.message); return; }
+
+    const sessionRes = await api('getActiveSession', token, currentSessionUnit.id);
+    if (sessionRes.success && sessionRes.data) {
+      currentSessionTrx = sessionRes.data.transaksi;
+      renderOrderTable(sessionRes.data.detail);
+    }
+    productsCache = null; // refresh stok
+    await loadProductTabs();
+    toastSuccess('Item ditambahkan.');
+  }
+
+  function openCheckoutModal() {
+    document.getElementById('chkDiskonNominal').value = '';
+    document.getElementById('chkDiskonPersen').value = '';
+    new bootstrap.Modal('#modalCheckout').show();
+  }
+
+  async function submitCheckout() {
+    const token = getToken();
+    const payload = {
+      tarifType: 'Reguler',
+      diskonNominal: Number(document.getElementById('chkDiskonNominal').value) || 0,
+      diskonPersen: Number(document.getElementById('chkDiskonPersen').value) || 0,
+      metodePembayaran: document.getElementById('chkMetodePembayaran').value
+    };
+
+    showLoading('Memproses pembayaran...');
+    const res = await api('finishRentalSession', token, currentSessionTrx.IDTransaksi, payload);
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+
+    bootstrap.Modal.getInstance(document.getElementById('modalCheckout')).hide();
+    bootstrap.Modal.getInstance(document.getElementById('modalSession')).hide();
+    toastSuccess('Transaksi selesai. Total ' + formatRupiah(res.data.grandTotal));
+
+    await printReceipt(currentSessionTrx.IDTransaksi);
+    loadKasirUnits();
+  }
+
+  async function printReceipt(idTransaksi) {
+    const token = getToken();
+    const res = await api('getReceiptData', token, idTransaksi);
+    if (!res.success) return;
+    const d = res.data;
+    const itemsHtml = d.itemTambahan.map(i => `${i.Produk} x${i.Qty} - ${formatRupiah(i.Subtotal)}`).join('<br>');
+    document.getElementById('receiptArea').innerHTML = `
+      <div style="text-align:center;">
+        <div><strong>${d.rental.nama}</strong></div>
+        <div>${d.rental.alamat}</div>
+        <div>${d.rental.noHP}</div>
+        <hr>
+      </div>
+      <div>No: ${d.transaksi.IDTransaksi}</div>
+      <div>Pelanggan: ${d.transaksi.NamaPelanggan}</div>
+      <div>PS: ${d.transaksi.NomorPS} (${d.transaksi.JenisPS})</div>
+      <div>Masuk: ${formatDateTimeShort(d.transaksi.JamMasuk)}</div>
+      <div>Keluar: ${formatDateTimeShort(d.transaksi.JamKeluar)}</div>
+      <div>Durasi: ${d.transaksi.Durasi} menit</div>
+      <hr>
+      ${itemsHtml}
+      <hr>
+      <div>Sub Rental: ${formatRupiah(d.transaksi.SubtotalPS)}</div>
+      <div>Diskon: ${formatRupiah(d.transaksi.Diskon)}</div>
+      <div>Pajak: ${formatRupiah(d.transaksi.Pajak)}</div>
+      <div><strong>Total: ${formatRupiah(d.transaksi.GrandTotal)}</strong></div>
+      <div>Bayar: ${d.transaksi.MetodePembayaran}</div>
+      <hr>
+      <div style="text-align:center;">Terima Kasih</div>
+    `;
+    window.print();
+  }
+</script>
+
+          <div id="page-playstation" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="fw-semibold mb-0">Manajemen Unit PlayStation</h6>
+    <button class="btn btn-sm btn-brand" style="background:#4f46e5;color:#fff;" onclick="openPsForm()"><i class="fa-solid fa-plus me-1"></i>Tambah Unit</button>
+  </div>
+  <div class="card-glass p-3">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead><tr><th>ID</th><th>Nama</th><th>Jenis</th><th>Ruang</th><th>Tarif/Jam</th><th>Tarif Member</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody id="psTableBody"><tr><td colspan="8" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalPsForm" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-semibold" id="psFormTitle">Tambah Unit</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="psFormId">
+        <div class="mb-2"><label class="form-label small">Nama PS</label><input class="form-control" id="psFormNama"></div>
+        <div class="row g-2 mb-2">
+          <div class="col-6"><label class="form-label small">Jenis</label>
+            <select class="form-select" id="psFormJenis"><option>PS3</option><option>PS4</option><option>PS5</option></select>
+          </div>
+          <div class="col-6"><label class="form-label small">Nomor Ruangan</label><input class="form-control" id="psFormRuangan"></div>
+        </div>
+        <div class="row g-2 mb-2">
+          <div class="col-6"><label class="form-label small">Tarif/Jam</label><input type="number" class="form-control" id="psFormTarif"></div>
+          <div class="col-6"><label class="form-label small">Tarif Member</label><input type="number" class="form-control" id="psFormTarifMember"></div>
+        </div>
+        <div class="mb-2"><label class="form-label small">Keterangan</label><input class="form-control" id="psFormKeterangan"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="submitPsForm()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function loadPlaystationTable() {
+    const token = getToken();
+    const res = await api('listPlaystations', token);
+    if (!res.success) { toastError(res.message); return; }
+    document.getElementById('psTableBody').innerHTML = res.data.map(u => `
+      <tr>
+        <td>${u.ID}</td><td>${u.NamaPS}</td><td>${u.Jenis}</td><td>${u.NomorRuangan || '-'}</td>
+        <td>${formatRupiah(u.TarifPerJam)}</td><td>${formatRupiah(u.TarifMember)}</td>
+        <td><span class="badge ${u.Status === 'Kosong' ? 'bg-success' : (u.Status === 'Dipakai' ? 'bg-danger' : 'bg-warning text-dark')}">${u.Status}</span></td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary" onclick='editPs(${JSON.stringify(u)})'><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-sm btn-outline-warning" onclick="setMaintenance('${u.ID}')"><i class="fa-solid fa-screwdriver-wrench"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deletePs('${u.ID}')"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="8" class="text-center text-muted">Belum ada unit.</td></tr>';
+  }
+
+  function openPsForm() {
+    ['psFormId','psFormNama','psFormRuangan','psFormTarif','psFormTarifMember','psFormKeterangan'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('psFormTitle').textContent = 'Tambah Unit';
+    new bootstrap.Modal('#modalPsForm').show();
+  }
+
+  function editPs(u) {
+    document.getElementById('psFormId').value = u.ID;
+    document.getElementById('psFormNama').value = u.NamaPS;
+    document.getElementById('psFormJenis').value = u.Jenis;
+    document.getElementById('psFormRuangan').value = u.NomorRuangan;
+    document.getElementById('psFormTarif').value = u.TarifPerJam;
+    document.getElementById('psFormTarifMember').value = u.TarifMember;
+    document.getElementById('psFormKeterangan').value = u.Keterangan;
+    document.getElementById('psFormTitle').textContent = 'Edit Unit';
+    new bootstrap.Modal('#modalPsForm').show();
+  }
+
+  async function submitPsForm() {
+    const token = getToken();
+    const id = document.getElementById('psFormId').value;
+    const payload = {
+      namaPS: document.getElementById('psFormNama').value.trim(),
+      jenis: document.getElementById('psFormJenis').value,
+      nomorRuangan: document.getElementById('psFormRuangan').value.trim(),
+      tarifPerJam: document.getElementById('psFormTarif').value,
+      tarifMember: document.getElementById('psFormTarifMember').value,
+      keterangan: document.getElementById('psFormKeterangan').value.trim()
+    };
+    showLoading('Menyimpan...');
+    const res = id ? await api('updatePlaystation', token, id, payload) : await api('createPlaystation', token, payload);
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+    bootstrap.Modal.getInstance(document.getElementById('modalPsForm')).hide();
+    toastSuccess(res.message);
+    loadPlaystationTable();
+  }
+
+  async function setMaintenance(id) {
+    if (!(await confirmAction('Tandai Maintenance?'))) return;
+    const token = getToken();
+    const res = await api('setPlaystationStatus', token, id, 'Maintenance');
+    if (!res.success) { toastError(res.message); return; }
+    toastSuccess('Status diperbarui.');
+    loadPlaystationTable();
+  }
+
+  async function deletePs(id) {
+    if (!(await confirmAction('Hapus unit ini?', 'Data tidak dapat dikembalikan.'))) return;
+    const token = getToken();
+    const res = await api('deletePlaystation', token, id);
+    if (!res.success) { toastError(res.message); return; }
+    toastSuccess('Unit dihapus.');
+    loadPlaystationTable();
+  }
+</script>
+
+          <div id="page-pelanggan" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="fw-semibold mb-0">Manajemen Pelanggan</h6>
+    <div class="d-flex gap-2">
+      <input class="form-control form-control-sm" id="custSearch" placeholder="Cari nama / no HP..." oninput="loadCustomerTable()">
+      <button class="btn btn-sm btn-brand" style="background:#4f46e5;color:#fff;" onclick="openCustForm()"><i class="fa-solid fa-plus me-1"></i>Tambah</button>
+    </div>
+  </div>
+  <div class="card-glass p-3">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead><tr><th>ID</th><th>Nama</th><th>No HP</th><th>Member</th><th>Poin</th><th>Aksi</th></tr></thead>
+        <tbody id="custTableBody"><tr><td colspan="6" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCustForm" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-semibold" id="custFormTitle">Tambah Pelanggan</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="custFormId">
+        <div class="mb-2"><label class="form-label small">Nama</label><input class="form-control" id="custFormNama"></div>
+        <div class="mb-2"><label class="form-label small">No HP</label><input class="form-control" id="custFormHP"></div>
+        <div class="mb-2"><label class="form-label small">Alamat</label><input class="form-control" id="custFormAlamat"></div>
+        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="custFormMember"><label class="form-check-label small">Member</label></div>
+        <div class="mb-2"><label class="form-label small">Catatan</label><input class="form-control" id="custFormCatatan"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="submitCustForm()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalCustHistory" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-semibold">Riwayat Transaksi</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body" id="custHistoryBody">Memuat...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function loadCustomerTable() {
+    const token = getToken();
+    const term = document.getElementById('custSearch').value.trim();
+    try {
+      const res = await api('listCustomers', token, term);
+      if (!res.success) {
+        toastError(res.message);
+        document.getElementById('custTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal memuat: ' + res.message + '</td></tr>';
+        return;
+      }
+      document.getElementById('custTableBody').innerHTML = res.data.map(c => `
+        <tr>
+          <td>${c.ID}</td><td>${c.Nama}</td><td>${c.NoHP || '-'}</td>
+          <td>${c.Member === 'Ya' ? '<span class="badge bg-primary">Member</span>' : '-'}</td>
+          <td>${c.Poin || 0}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-info" onclick="viewCustHistory('${c.Nama}')"><i class="fa-solid fa-clock-rotate-left"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" onclick='editCust(${JSON.stringify(c)})'><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteCust('${c.ID}')"><i class="fa-solid fa-trash"></i></button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" class="text-center text-muted">Belum ada pelanggan.</td></tr>';
+    } catch (err) {
+      toastError('Gagal terhubung ke server: ' + err);
+      document.getElementById('custTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal terhubung ke server.</td></tr>';
+    }
+  }
+
+  function openCustForm() {
+    ['custFormId','custFormNama','custFormHP','custFormAlamat','custFormCatatan'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('custFormMember').checked = false;
+    document.getElementById('custFormTitle').textContent = 'Tambah Pelanggan';
+    new bootstrap.Modal('#modalCustForm').show();
+  }
+
+  function editCust(c) {
+    document.getElementById('custFormId').value = c.ID;
+    document.getElementById('custFormNama').value = c.Nama;
+    document.getElementById('custFormHP').value = c.NoHP;
+    document.getElementById('custFormAlamat').value = c.Alamat;
+    document.getElementById('custFormMember').checked = c.Member === 'Ya';
+    document.getElementById('custFormCatatan').value = c.Catatan;
+    document.getElementById('custFormTitle').textContent = 'Edit Pelanggan';
+    new bootstrap.Modal('#modalCustForm').show();
+  }
+
+  async function submitCustForm() {
+    const token = getToken();
+    const id = document.getElementById('custFormId').value;
+    const payload = {
+      nama: document.getElementById('custFormNama').value.trim(),
+      noHP: document.getElementById('custFormHP').value.trim(),
+      alamat: document.getElementById('custFormAlamat').value.trim(),
+      member: document.getElementById('custFormMember').checked,
+      catatan: document.getElementById('custFormCatatan').value.trim()
+    };
+    if (!payload.nama) { toastError('Nama pelanggan wajib diisi.'); return; }
+
+    showLoading('Menyimpan...');
+    try {
+      const res = id ? await api('updateCustomer', token, id, payload) : await api('createCustomer', token, payload);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      bootstrap.Modal.getInstance(document.getElementById('modalCustForm')).hide();
+      toastSuccess(res.message);
+      loadCustomerTable();
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  async function deleteCust(id) {
+    if (!(await confirmAction('Hapus pelanggan ini?'))) return;
+    const token = getToken();
+    const res = await api('deleteCustomer', token, id);
+    if (!res.success) { toastError(res.message); return; }
+    toastSuccess('Pelanggan dihapus.');
+    loadCustomerTable();
+  }
+
+  async function viewCustHistory(nama) {
+    new bootstrap.Modal('#modalCustHistory').show();
+    const token = getToken();
+    const res = await api('getCustomerHistory', token, nama);
+    const body = document.getElementById('custHistoryBody');
+    if (!res.success) { body.innerHTML = res.message; return; }
+    const d = res.data;
+    body.innerHTML = `
+      <p>Total transaksi: <strong>${d.jumlahTransaksi}</strong> &middot; Total belanja: <strong>${formatRupiah(d.totalSpent)}</strong></p>
+      <table class="table table-sm">
+        <thead><tr><th>ID</th><th>Tanggal</th><th>PS</th><th class="text-end">Total</th></tr></thead>
+        <tbody>
+          ${d.transaksi.map(t => `<tr><td>${t.IDTransaksi}</td><td>${formatDateTimeShort(t.Tanggal)}</td><td>${t.NomorPS}</td><td class="text-end">${formatRupiah(t.GrandTotal)}</td></tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">Belum ada transaksi.</td></tr>'}
+        </tbody>
+      </table>
+    `;
+  }
+</script>
+
+          <div id="page-produk" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <ul class="nav nav-pills" id="produkKategoriTabs">
+      <li class="nav-item"><button class="nav-link active" onclick="switchProdukTab('Makanan')">Makanan</button></li>
+      <li class="nav-item"><button class="nav-link" onclick="switchProdukTab('Minuman')">Minuman</button></li>
+      <li class="nav-item"><button class="nav-link" onclick="switchProdukTab('Aksesoris')">Aksesoris</button></li>
+    </ul>
+    <button class="btn btn-sm btn-brand" style="background:#4f46e5;color:#fff;" onclick="openProdukForm()"><i class="fa-solid fa-plus me-1"></i>Tambah Produk</button>
+  </div>
+  <div class="card-glass p-3">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead><tr><th>ID</th><th>Nama</th><th>Harga</th><th>Stok</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody id="produkTableBody"><tr><td colspan="6" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalProdukForm" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-semibold" id="produkFormTitle">Tambah Produk</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="produkFormId">
+        <div class="mb-2"><label class="form-label small">Nama</label><input class="form-control" id="produkFormNama"></div>
+        <div class="row g-2 mb-2">
+          <div class="col-6"><label class="form-label small">Harga</label><input type="number" class="form-control" id="produkFormHarga"></div>
+          <div class="col-6"><label class="form-label small">Stok</label><input type="number" class="form-control" id="produkFormStok"></div>
+        </div>
+        <div class="mb-2" id="produkFormKategoriWrap"><label class="form-label small">Kategori (khusus Makanan)</label><input class="form-control" id="produkFormKategori"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="submitProdukForm()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentProdukKategori = 'Makanan';
+
+  function switchProdukTab(kategori) {
+    currentProdukKategori = kategori;
+    document.querySelectorAll('#produkKategoriTabs .nav-link').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('produkFormKategoriWrap').style.display = kategori === 'Makanan' ? 'block' : 'none';
+    loadProdukTable();
+  }
+
+  async function loadProdukTable() {
+    const token = getToken();
+    const res = await api('listProducts', token, currentProdukKategori);
+    if (!res.success) { toastError(res.message); return; }
+    document.getElementById('produkTableBody').innerHTML = res.data.map(p => `
+      <tr>
+        <td>${p.ID}</td><td>${p.Nama}</td><td>${formatRupiah(p.Harga)}</td>
+        <td>${p.Stok <= 5 ? '<span class="text-danger fw-bold">' + p.Stok + '</span>' : p.Stok}</td>
+        <td><span class="badge ${p.Status === 'Aktif' ? 'bg-success' : 'bg-secondary'}">${p.Status}</span></td>
+        <td>
+          <button class="btn btn-sm btn-outline-secondary" onclick='editProduk(${JSON.stringify(p)})'><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteProdukItem('${p.ID}')"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" class="text-center text-muted">Belum ada produk.</td></tr>';
+  }
+
+  function openProdukForm() {
+    ['produkFormId','produkFormNama','produkFormHarga','produkFormStok','produkFormKategori'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('produkFormTitle').textContent = 'Tambah Produk ' + currentProdukKategori;
+    new bootstrap.Modal('#modalProdukForm').show();
+  }
+
+  function editProduk(p) {
+    document.getElementById('produkFormId').value = p.ID;
+    document.getElementById('produkFormNama').value = p.Nama;
+    document.getElementById('produkFormHarga').value = p.Harga;
+    document.getElementById('produkFormStok').value = p.Stok;
+    document.getElementById('produkFormKategori').value = p.Kategori || '';
+    document.getElementById('produkFormTitle').textContent = 'Edit Produk';
+    new bootstrap.Modal('#modalProdukForm').show();
+  }
+
+  async function submitProdukForm() {
+    const token = getToken();
+    const id = document.getElementById('produkFormId').value;
+    const payload = {
+      nama: document.getElementById('produkFormNama').value.trim(),
+      harga: document.getElementById('produkFormHarga').value,
+      stok: document.getElementById('produkFormStok').value,
+      kategori: document.getElementById('produkFormKategori').value.trim()
+    };
+    showLoading('Menyimpan...');
+    const res = id
+      ? await api('updateProduct', token, currentProdukKategori, id, payload)
+      : await api('createProduct', token, currentProdukKategori, payload);
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+    bootstrap.Modal.getInstance(document.getElementById('modalProdukForm')).hide();
+    toastSuccess(res.message);
+    loadProdukTable();
+  }
+
+  async function deleteProdukItem(id) {
+    if (!(await confirmAction('Hapus produk ini?'))) return;
+    const token = getToken();
+    const res = await api('deleteProduct', token, currentProdukKategori, id);
+    if (!res.success) { toastError(res.message); return; }
+    toastSuccess('Produk dihapus.');
+    loadProdukTable();
+  }
+</script>
+
+          <div id="page-pengeluaran" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="fw-semibold mb-0">Pengeluaran Operasional</h6>
+    <button class="btn btn-sm btn-brand" style="background:#4f46e5;color:#fff;" onclick="openExpenseForm()"><i class="fa-solid fa-plus me-1"></i>Tambah</button>
+  </div>
+  <div class="card-glass p-3">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead><tr><th>ID</th><th>Tanggal</th><th>Kategori</th><th>Keterangan</th><th class="text-end">Nominal</th><th>Kasir</th><th>Aksi</th></tr></thead>
+        <tbody id="expenseTableBody"><tr><td colspan="7" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalExpenseForm" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-semibold">Tambah Pengeluaran</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-2"><label class="form-label small">Kategori</label>
+          <select class="form-select" id="expFormKategori">
+            <option>Listrik</option><option>Internet</option><option>Air</option>
+            <option>Snack</option><option>Servis</option><option>Gaji</option><option>Lainnya</option>
+          </select>
+        </div>
+        <div class="mb-2"><label class="form-label small">Keterangan</label><input class="form-control" id="expFormKeterangan"></div>
+        <div class="mb-2"><label class="form-label small">Nominal</label><input type="number" class="form-control" id="expFormNominal"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="submitExpenseForm()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function loadExpenseTable() {
+    const token = getToken();
+    const res = await api('listExpenses', token, null);
+    if (!res.success) { toastError(res.message); return; }
+    document.getElementById('expenseTableBody').innerHTML = res.data.map(e => `
+      <tr>
+        <td>${e.ID}</td><td>${formatDateTimeShort(e.Tanggal)}</td><td>${e.Kategori}</td>
+        <td>${e.Keterangan || '-'}</td><td class="text-end">${formatRupiah(e.Nominal)}</td><td>${e.Kasir}</td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteExpenseItem('${e.ID}')"><i class="fa-solid fa-trash"></i></button></td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" class="text-center text-muted">Belum ada pengeluaran.</td></tr>';
+  }
+
+  function openExpenseForm() {
+    document.getElementById('expFormKeterangan').value = '';
+    document.getElementById('expFormNominal').value = '';
+    new bootstrap.Modal('#modalExpenseForm').show();
+  }
+
+  async function submitExpenseForm() {
+    const token = getToken();
+    const payload = {
+      kategori: document.getElementById('expFormKategori').value,
+      keterangan: document.getElementById('expFormKeterangan').value.trim(),
+      nominal: document.getElementById('expFormNominal').value
+    };
+    showLoading('Menyimpan...');
+    const res = await api('createExpense', token, payload);
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+    bootstrap.Modal.getInstance(document.getElementById('modalExpenseForm')).hide();
+    toastSuccess(res.message);
+    loadExpenseTable();
+  }
+
+  async function deleteExpenseItem(id) {
+    if (!(await confirmAction('Hapus data pengeluaran ini?'))) return;
+    const token = getToken();
+    const res = await api('deleteExpense', token, id);
+    if (!res.success) { toastError(res.message); return; }
+    toastSuccess('Data dihapus.');
+    loadExpenseTable();
+  }
+</script>
+
+          <div id="page-laporan" class="page-section" style="display:none;">
+  <div class="card-glass p-3 mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-2"><label class="form-label small">Dari Tanggal</label><input type="date" class="form-control" id="lapStart"></div>
+      <div class="col-6 col-md-2"><label class="form-label small">Sampai Tanggal</label><input type="date" class="form-control" id="lapEnd"></div>
+      <div class="col-6 col-md-2"><label class="form-label small">Kasir</label><input class="form-control" id="lapKasir" placeholder="Semua"></div>
+      <div class="col-6 col-md-2"><label class="form-label small">Unit PS</label><input class="form-control" id="lapPS" placeholder="Semua"></div>
+      <div class="col-6 col-md-2"><label class="form-label small">Segmen</label>
+        <select class="form-select" id="lapMember">
+          <option value="all">Semua</option><option value="member">Member</option><option value="nonmember">Non Member</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <button class="btn btn-brand w-100" style="background:#4f46e5;color:#fff;" onclick="applyReportFilter()"><i class="fa-solid fa-filter me-1"></i>Terapkan</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card-glass p-3 text-center"><div class="text-muted small">Total Transaksi</div><div class="fs-4 fw-bold" id="lapTotalTrx">-</div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card-glass p-3 text-center"><div class="text-muted small">Total Pendapatan</div><div class="fs-4 fw-bold" id="lapTotalPendapatan">-</div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="card-glass p-3 text-center d-flex align-items-center justify-content-center gap-2">
+        <button class="btn btn-outline-secondary btn-sm" onclick="exportReportCsv()"><i class="fa-solid fa-file-excel me-1"></i>Export Excel/CSV</button>
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.print()"><i class="fa-solid fa-print me-1"></i>Print</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-6"><div class="card-glass p-3"><h6 class="fw-semibold small mb-2">PlayStation Terlaris</h6><canvas id="chartPS" height="160"></canvas></div></div>
+    <div class="col-lg-6"><div class="card-glass p-3"><h6 class="fw-semibold small mb-2">Produk Terlaris</h6><canvas id="chartProduk" height="160"></canvas></div></div>
+  </div>
+
+  <div class="card-glass p-3">
+    <h6 class="fw-semibold small mb-2">Detail Transaksi</h6>
+    <div class="table-responsive">
+      <table class="table table-sm table-hover">
+        <thead><tr><th>ID</th><th>Tanggal</th><th>Pelanggan</th><th>PS</th><th>Kasir</th><th class="text-end">Total</th></tr></thead>
+        <tbody id="lapTableBody"><tr><td colspan="6" class="text-center text-muted">Terapkan filter untuk melihat data.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let chartPSInstance = null, chartProdukInstance = null, lastReportRows = [];
+
+  function currentReportFilter() {
+    return {
+      startDate: document.getElementById('lapStart').value || null,
+      endDate: document.getElementById('lapEnd').value || null,
+      kasir: document.getElementById('lapKasir').value.trim() || null,
+      nomorPS: document.getElementById('lapPS').value.trim() || null,
+      memberOnly: document.getElementById('lapMember').value
+    };
+  }
+
+  async function applyReportFilter() {
+    const token = getToken();
+    const filter = currentReportFilter();
+    showLoading('Memuat laporan...');
+    const [reportRes, analyticsRes] = await Promise.all([
+      api('getTransactionReport', token, filter),
+      api('getReportAnalytics', token, filter)
+    ]);
+    hideLoading();
+    if (!reportRes.success) { toastError(reportRes.message); return; }
+
+    lastReportRows = reportRes.data.rows;
+    document.getElementById('lapTotalTrx').textContent = reportRes.data.totalTransaksi;
+    document.getElementById('lapTotalPendapatan').textContent = formatRupiah(reportRes.data.totalPendapatan);
+
+    document.getElementById('lapTableBody').innerHTML = lastReportRows.map(t => `
+      <tr><td>${t.IDTransaksi}</td><td>${formatDateTimeShort(t.Tanggal)}</td><td>${t.NamaPelanggan}</td><td>${t.NomorPS}</td><td>${t.Kasir}</td><td class="text-end">${formatRupiah(t.GrandTotal)}</td></tr>
+    `).join('') || '<tr><td colspan="6" class="text-center text-muted">Tidak ada data pada rentang ini.</td></tr>';
+
+    if (analyticsRes.success) renderReportCharts(analyticsRes.data);
+  }
+
+  function renderReportCharts(d) {
+    const psLabels = Object.keys(d.psTerlaris);
+    const psValues = Object.values(d.psTerlaris);
+    if (chartPSInstance) chartPSInstance.destroy();
+    chartPSInstance = new Chart(document.getElementById('chartPS'), {
+      type: 'bar',
+      data: { labels: psLabels, datasets: [{ label: 'Sesi', data: psValues, backgroundColor: '#4f46e5' }] },
+      options: { plugins: { legend: { display: false } } }
+    });
+
+    const prodLabels = Object.keys(d.produkTerlaris);
+    const prodValues = Object.values(d.produkTerlaris);
+    if (chartProdukInstance) chartProdukInstance.destroy();
+    chartProdukInstance = new Chart(document.getElementById('chartProduk'), {
+      type: 'doughnut',
+      data: { labels: prodLabels, datasets: [{ data: prodValues, backgroundColor: ['#4f46e5','#06b6d4','#22c55e','#f59e0b','#ef4444','#7c3aed'] } ] }
+    });
+  }
+
+  function exportReportCsv() {
+    if (!lastReportRows.length) { toastError('Tidak ada data untuk diexport.'); return; }
+    const headers = ['IDTransaksi','Tanggal','NamaPelanggan','NomorPS','Kasir','GrandTotal'];
+    const csvRows = [headers.join(',')].concat(
+      lastReportRows.map(r => headers.map(h => `"${(r[h] ?? '').toString().replace(/"/g,'""')}"`).join(','))
+    );
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'laporan_transaksi.csv';
+    link.click();
+  }
+</script>
+
+          <div id="page-pengaturan" class="page-section" style="display:none;">
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card-glass p-3 mb-3">
+        <h6 class="fw-semibold mb-3">Pengaturan Rental</h6>
+
+        <div class="mb-3 text-center">
+          <img id="logoPreview" src="" alt="Logo" style="width:88px;height:88px;object-fit:cover;border-radius:16px;display:none;" class="mb-2 border">
+          <div id="logoPlaceholder" class="mx-auto mb-2 d-flex align-items-center justify-content-center bg-light border rounded-3" style="width:88px;height:88px;">
+            <i class="fa-solid fa-image text-muted fs-3"></i>
+          </div>
+          <div>
+            <label class="btn btn-sm btn-outline-secondary mb-0">
+              <i class="fa-solid fa-upload me-1"></i>Ganti Logo
+              <input type="file" accept="image/*" id="logoFileInput" hidden onchange="handleLogoUpload(this.files[0])">
+            </label>
+          </div>
+        </div>
+
+        <div class="mb-2"><label class="form-label small">Nama Rental</label><input class="form-control" id="setNamaRental"></div>
+        <div class="mb-2"><label class="form-label small">Alamat</label><input class="form-control" id="setAlamat"></div>
+        <div class="mb-2"><label class="form-label small">No HP</label><input class="form-control" id="setNoHP"></div>
+        <div class="row g-2 mb-2">
+          <div class="col-6"><label class="form-label small">Pajak (%)</label><input type="number" class="form-control" id="setPajak"></div>
+          <div class="col-6"><label class="form-label small">Pembulatan Durasi (menit)</label><input type="number" class="form-control" id="setPembulatan"></div>
+        </div>
+        <div class="mb-3"><label class="form-label small">Jam Operasional</label><input class="form-control" id="setJamOperasional"></div>
+        <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="saveSettings()">Simpan Pengaturan</button>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="card-glass p-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-semibold mb-0">Manajemen User</h6>
+          <button class="btn btn-sm btn-brand" style="background:#4f46e5;color:#fff;" onclick="openUserForm()"><i class="fa-solid fa-plus me-1"></i>Tambah</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover">
+            <thead><tr><th>Foto</th><th>Nama</th><th>Username</th><th>Role</th><th>Status</th><th>Aksi</th></tr></thead>
+            <tbody id="userTableBody"><tr><td colspan="6" class="text-center text-muted">Memuat...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalUserForm" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-semibold">Tambah User</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-2"><label class="form-label small">Nama</label><input class="form-control" id="userFormNama"></div>
+        <div class="mb-2"><label class="form-label small">Username</label><input class="form-control" id="userFormUsername"></div>
+        <div class="mb-2">
+          <label class="form-label small">Password</label>
+          <div class="input-group">
+            <input type="password" class="form-control" id="userFormPassword">
+            <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility('userFormPassword', this)">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mb-2"><label class="form-label small">Role</label>
+          <select class="form-select" id="userFormRole"><option>Kasir</option><option>Admin</option><option>Owner</option></select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="submitUserForm()">Simpan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function loadSettingsPage() {
+    const token = getToken();
+    try {
+      const res = await api('getAppSettings', token);
+      if (res.success) {
+        const s = res.data;
+        document.getElementById('setNamaRental').value = s.NamaRental || '';
+        document.getElementById('setAlamat').value = s.Alamat || '';
+        document.getElementById('setNoHP').value = s.NoHP || '';
+        document.getElementById('setPajak').value = s.Pajak || '0';
+        document.getElementById('setPembulatan').value = s.PembulatanMenit || '15';
+        document.getElementById('setJamOperasional').value = s.JamOperasional || '';
+        showLogoPreview(s.Logo || '');
+      } else {
+        toastError(res.message);
+      }
+    } catch (err) {
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+    loadUserTable();
+  }
+
+  function showLogoPreview(dataUrl) {
+    const img = document.getElementById('logoPreview');
+    const placeholder = document.getElementById('logoPlaceholder');
+    if (dataUrl) {
+      img.src = dataUrl;
+      img.style.display = 'inline-block';
+      placeholder.style.display = 'none';
+    } else {
+      img.style.display = 'none';
+      placeholder.style.display = 'flex';
+    }
+  }
+
+  async function handleLogoUpload(file) {
+    if (!file) return;
+    const token = getToken();
+    showLoading('Mengunggah logo...');
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, 200, 0.8);
+      const res = await api('saveAppSettings', token, { Logo: dataUrl });
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      showLogoPreview(dataUrl);
+      applySidebarLogo(dataUrl);
+      toastSuccess('Logo berhasil diperbarui.');
+    } catch (err) {
+      hideLoading();
+      toastError(typeof err === 'string' ? err : 'Gagal mengunggah logo: ' + err);
+    }
+  }
+
+  async function saveSettings() {
+    const token = getToken();
+    const payload = {
+      NamaRental: document.getElementById('setNamaRental').value.trim(),
+      Alamat: document.getElementById('setAlamat').value.trim(),
+      NoHP: document.getElementById('setNoHP').value.trim(),
+      Pajak: document.getElementById('setPajak').value,
+      PembulatanMenit: document.getElementById('setPembulatan').value,
+      JamOperasional: document.getElementById('setJamOperasional').value.trim()
+    };
+    showLoading('Menyimpan pengaturan...');
+    try {
+      const res = await api('saveAppSettings', token, payload);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      toastSuccess(res.message);
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  async function loadUserTable() {
+    const token = getToken();
+    try {
+      const res = await api('listUsers', token);
+      if (!res.success) {
+        toastError(res.message);
+        document.getElementById('userTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal memuat: ' + res.message + '</td></tr>';
+        return;
+      }
+      document.getElementById('userTableBody').innerHTML = res.data.map(u => `
+        <tr>
+          <td>
+            ${u.FotoProfil
+              ? `<img src="${u.FotoProfil}" style="width:36px;height:36px;object-fit:cover;border-radius:50%;">`
+              : `<div class="d-flex align-items-center justify-content-center bg-light border rounded-circle" style="width:36px;height:36px;"><i class="fa-solid fa-user text-muted small"></i></div>`}
+          </td>
+          <td>${u.Nama}</td><td>${u.Username}</td><td>${u.Role}</td>
+          <td><span class="badge ${u.Status === 'Aktif' ? 'bg-success' : 'bg-secondary'}">${u.Status}</span></td>
+          <td>
+            <label class="btn btn-sm btn-outline-primary mb-0" title="Ganti foto profil">
+              <i class="fa-solid fa-camera"></i>
+              <input type="file" accept="image/*" hidden onchange="handleUserPhotoUpload('${u.ID}', this.files[0])">
+            </label>
+            <button class="btn btn-sm btn-outline-warning" onclick="toggleUserStatus('${u.ID}','${u.Status}')"><i class="fa-solid fa-power-off"></i></button>
+          </td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" class="text-center text-muted">Belum ada user.</td></tr>';
+    } catch (err) {
+      toastError('Gagal terhubung ke server: ' + err);
+      document.getElementById('userTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal terhubung ke server.</td></tr>';
+    }
+  }
+
+  async function handleUserPhotoUpload(userId, file) {
+    if (!file) return;
+    const token = getToken();
+    showLoading('Mengunggah foto...');
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, 300, 0.75);
+      const res = await api('updateUserPhoto', token, userId, dataUrl);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      toastSuccess('Foto profil diperbarui.');
+      loadUserTable();
+    } catch (err) {
+      hideLoading();
+      toastError(typeof err === 'string' ? err : 'Gagal mengunggah foto: ' + err);
+    }
+  }
+
+  function openUserForm() {
+    document.getElementById('userFormNama').value = '';
+    document.getElementById('userFormUsername').value = '';
+    document.getElementById('userFormPassword').value = '';
+    new bootstrap.Modal('#modalUserForm').show();
+  }
+
+  async function submitUserForm() {
+    const token = getToken();
+    const payload = {
+      nama: document.getElementById('userFormNama').value.trim(),
+      username: document.getElementById('userFormUsername').value.trim(),
+      password: document.getElementById('userFormPassword').value,
+      role: document.getElementById('userFormRole').value
+    };
+    if (!payload.nama || !payload.username || !payload.password) { toastError('Semua field wajib diisi.'); return; }
+
+    showLoading('Menyimpan...');
+    try {
+      const res = await api('createUser', token, payload);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      bootstrap.Modal.getInstance(document.getElementById('modalUserForm')).hide();
+      toastSuccess(res.message);
+      loadUserTable();
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  async function toggleUserStatus(id, currentStatus) {
+    const newStatus = currentStatus === 'Aktif' ? 'Nonaktif' : 'Aktif';
+    if (!(await confirmAction('Ubah status user menjadi ' + newStatus + '?'))) return;
+    const token = getToken();
+    const res = await api('updateUserStatus', token, id, newStatus);
+    if (!res.success) { toastError(res.message); return; }
+    toastSuccess('Status user diperbarui.');
+    loadUserTable();
+  }
+</script>
+
+        </div>
+      </main>
+
+      <footer class="text-center text-muted py-4" style="font-size:.8rem;">
+  &copy; <span id="footerYear"></span> PS Rental Pro AppsScript &mdash; Dibuat dengan Google Apps Script
+</footer>
+<script>document.getElementById('footerYear').textContent = new Date().getFullYear();</script>
+
+    </div>
+  </div>
+
+  <!-- Loading awal saat mengecek sesi -->
+  <div id="bootLoading" style="min-height:100vh; display:flex; align-items:center; justify-content:center;">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.6/dist/sweetalert2.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    document.getElementById('loginYear').textContent = new Date().getFullYear();
+
+    // Toggle lihat/sembunyikan kata sandi (dipakai di form login & form user).
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      const icon = btn.querySelector('i');
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      icon.classList.toggle('fa-eye', !isHidden);
+      icon.classList.toggle('fa-eye-slash', isHidden);
+    }
+
+    // ---------------- Branding (logo & nama rental) ----------------
+    function applySidebarLogo(dataUrl, nama) {
+      const img = document.getElementById('sidebarLogo');
+      const icon = document.getElementById('sidebarLogoIcon');
+      if (dataUrl) { img.src = dataUrl; img.style.display = 'inline-block'; icon.style.display = 'none'; }
+      else { img.style.display = 'none'; icon.style.display = 'inline-block'; }
+      if (nama) document.getElementById('sidebarBrandName').textContent = nama;
+    }
+
+    function applyLoginBranding(dataUrl, nama) {
+      const img = document.getElementById('loginLogoImg');
+      const icon = document.getElementById('loginLogoIcon');
+      if (dataUrl) { img.src = dataUrl; img.style.display = 'inline-block'; icon.style.display = 'none'; }
+      else { img.style.display = 'none'; icon.style.display = 'flex'; }
+      if (nama) document.getElementById('loginBrandName').textContent = nama;
+    }
+
+    async function loadBranding() {
+      try {
+        const res = await api('getPublicBranding');
+        if (res.success) {
+          applyLoginBranding(res.data.logo, res.data.nama);
+          applySidebarLogo(res.data.logo, res.data.nama);
+          document.title = res.data.nama || 'PS Rental Pro';
+        }
+      } catch (e) { /* biarkan tampilan default jika gagal */ }
+    }
+
+    // ---------------- Kontrol tampilan (tanpa navigasi sama sekali) ----------------
+    function showLoginView() {
+      document.getElementById('bootLoading').style.display = 'none';
+      document.getElementById('appView').style.display = 'none';
+      document.getElementById('loginView').style.display = 'flex';
+    }
+
+    function showAppView(user) {
+      document.getElementById('bootLoading').style.display = 'none';
+      document.getElementById('loginView').style.display = 'none';
+      document.getElementById('appView').style.display = 'block';
+
+      document.getElementById('navUserName').textContent = user.nama;
+      document.getElementById('navUserRole').textContent = user.role;
+      if (user.role === 'Owner') {
+        document.querySelectorAll('.role-owner-only').forEach(el => el.style.display = 'block');
+      }
+      resetIdleTimer();
+      showPage('dashboard');
+    }
+
+    // ---------------- Router antar modul di dalam appView ----------------
+    const PAGE_TITLES = {
+      dashboard: 'Dashboard', kasir: 'Kasir', playstation: 'PlayStation',
+      pelanggan: 'Pelanggan', produk: 'Produk', pengeluaran: 'Pengeluaran',
+      laporan: 'Laporan', pengaturan: 'Pengaturan'
+    };
+    const PAGE_LOADERS = {
+      dashboard: loadDashboard, kasir: loadKasirUnits, playstation: loadPlaystationTable,
+      pelanggan: loadCustomerTable, produk: loadProdukTable, pengeluaran: loadExpenseTable,
+      laporan: () => {}, pengaturan: loadSettingsPage
+    };
+
+    function showPage(page) {
+      document.querySelectorAll('.page-section').forEach(el => el.style.display = 'none');
+      const target = document.getElementById('page-' + page);
+      if (target) target.style.display = 'block';
+      document.getElementById('pageTitle').textContent = PAGE_TITLES[page] || page;
+
+      document.querySelectorAll('#sidebarNav .nav-link').forEach(el => el.classList.remove('active'));
+      const navLink = document.querySelector(`#sidebarNav .nav-link[data-page="${page}"]`);
+      if (navLink) navLink.classList.add('active');
+
+      document.querySelector('.app-sidebar').classList.remove('show');
+      if (PAGE_LOADERS[page]) PAGE_LOADERS[page]();
+    }
+
+    document.getElementById('sidebarNav').addEventListener('click', function (e) {
+      const link = e.target.closest('a[data-page]');
+      if (!link) return;
+      e.preventDefault();
+      showPage(link.dataset.page);
+    });
+
+    // ---------------- Form login ----------------
+    document.getElementById('loginForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const remember = document.getElementById('rememberMe').checked;
+
+      showLoading('Memeriksa akun...');
+      try {
+        const res = await api('loginUser', username, password);
+        hideLoading();
+        if (!res.success) { toastError(res.message); return; }
+
+        sessionStorage.setItem('psrental_token', res.data.token);
+        sessionStorage.setItem('psrental_nama', res.data.nama);
+        sessionStorage.setItem('psrental_role', res.data.role);
+        if (remember) localStorage.setItem('psrental_username', username);
+
+        toastSuccess('Login berhasil.');
+        showAppView({ nama: res.data.nama, role: res.data.role });
+      } catch (err) {
+        hideLoading();
+        toastError('Gagal terhubung ke server: ' + err);
+      }
+    });
+
+    (function prefillUsername() {
+      const saved = localStorage.getItem('psrental_username');
+      if (saved) {
+        document.getElementById('username').value = saved;
+        document.getElementById('rememberMe').checked = true;
+      }
+    })();
+
+    // ---------------- Boot: cek sesi tersimpan, tanpa navigasi apapun ----------------
+    (async function boot() {
+      loadBranding();
+      const user = await checkSession_();
+      if (user) {
+        showAppView(user);
+      } else {
+        sessionStorage.removeItem('psrental_token');
+        showLoginView();
+      }
+    })();
   </script>
 </body>
 </html>
