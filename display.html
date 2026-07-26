@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
@@ -148,12 +150,14 @@
 
   <style>
     html, body {
-      height: 100%; margin: 0; overflow: hidden;
+      height: 100%; margin: 0;
       background: #0b0c14; color: #fff;
       font-family: 'Poppins', sans-serif;
     }
+    @media (min-width: 701px) { html, body { overflow: hidden; } }
+    @media (max-width: 700px) { html, body { overflow-y: auto; } }
     #tvWrap {
-      height: 100vh; width: 100vw;
+      min-height: 100vh; width: 100vw;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       text-align: center; padding: 2rem; box-sizing: border-box;
       transition: background .4s ease;
@@ -167,39 +171,44 @@
     @keyframes flashBg { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
 
     #tvLogo { width: 64px; height: 64px; object-fit: cover; border-radius: 16px; margin-bottom: 1rem; display: none; }
-    #tvRentalName { font-size: 1.4rem; opacity: .75; letter-spacing: .05em; margin-bottom: .3rem; }
-    #tvUnitName { font-size: 3.2rem; font-weight: 700; margin-bottom: .3rem; }
-    #tvSubInfo { font-size: 1.3rem; opacity: .85; margin-bottom: 2rem; }
+    #tvRentalName { font-size: clamp(1rem, 3vw, 1.4rem); opacity: .75; letter-spacing: .05em; margin-bottom: .3rem; }
+    #tvUnitName { font-size: clamp(1.6rem, 6vw, 3.2rem); font-weight: 700; margin-bottom: .3rem; }
+    #tvSubInfo { font-size: clamp(0.9rem, 2.5vw, 1.3rem); opacity: .85; margin-bottom: 2rem; }
 
-    #tvStateLabel { font-size: 2rem; font-weight: 600; margin-bottom: 1rem; }
+    #tvStateLabel { font-size: clamp(1.1rem, 4vw, 2rem); font-weight: 600; margin-bottom: 1rem; }
     #tvTimer {
-      font-size: 8rem; font-weight: 700; letter-spacing: .04em;
+      font-size: clamp(3rem, 14vw, 8rem); font-weight: 700; letter-spacing: .04em;
       font-variant-numeric: tabular-nums; line-height: 1;
       text-shadow: 0 0 40px rgba(255,255,255,0.25);
     }
-    #tvExtraInfo { font-size: 1.4rem; opacity: .8; margin-top: 1.5rem; }
+    #tvExtraInfo { font-size: clamp(0.95rem, 3vw, 1.4rem); opacity: .8; margin-top: 1.5rem; }
     #tvOvertimeWarning {
-      display: none; font-size: 2.2rem; font-weight: 700; color: #fecaca;
+      display: none; font-size: clamp(1.2rem, 4vw, 2.2rem); font-weight: 700; color: #fecaca;
       margin-top: 1.5rem; animation: pulseText 1s ease-in-out infinite;
     }
     @keyframes pulseText { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
-    #tvIcon { font-size: 5rem; margin-bottom: 1rem; }
-    #tvClock { position: fixed; top: 24px; right: 32px; font-size: 1.4rem; opacity: .6; font-variant-numeric: tabular-nums; }
-    #tvError { font-size: 1.6rem; color: #fca5a5; max-width: 600px; }
+    #tvIcon { font-size: clamp(2.5rem, 8vw, 5rem); margin-bottom: 1rem; }
+    #tvClock { position: fixed; top: 16px; right: 20px; font-size: clamp(0.85rem, 2vw, 1.4rem); opacity: .6; font-variant-numeric: tabular-nums; }
+    #tvError { font-size: clamp(1rem, 3vw, 1.6rem); color: #fca5a5; max-width: 90vw; }
 
     /* ---------- Mode Grid (Semua Unit) ---------- */
     #tvGridWrap {
       display: none;
-      height: 100vh; width: 100vw; box-sizing: border-box;
+      min-height: 100vh; width: 100vw; box-sizing: border-box;
       padding: 2.5rem 3rem; background: radial-gradient(circle at top, #1e1b3a, #0b0c14 80%);
+      overflow-y: auto;
+    }
+    @media (max-width: 700px) {
+      #tvGridWrap { padding: 1.2rem 1rem; }
+      #tvWrap { padding: 1rem; }
     }
     #tvGridHeader { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
     #tvGridHeader img { width: 56px; height: 56px; object-fit: cover; border-radius: 14px; display: none; }
-    #tvGridHeader h1 { font-size: 2.2rem; font-weight: 700; margin: 0; }
+    #tvGridHeader h1 { font-size: clamp(1.3rem, 4vw, 2.2rem); font-weight: 700; margin: 0; }
     #tvGrid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1.5rem;
     }
     .tv-unit-card {
@@ -212,11 +221,11 @@
     .tv-unit-card.menunggu { background: rgba(217,119,6,0.28); border-color: rgba(251,191,36,0.5); animation: pulseBg 1.6s ease-in-out infinite; }
     .tv-unit-card.overtime { background: rgba(220,38,38,0.35); border-color: rgba(252,165,165,0.6); animation: flashBg 1.2s ease-in-out infinite; }
     .tv-unit-card.maintenance { background: rgba(217,119,6,0.22); border-color: rgba(251,191,36,0.4); }
-    .tv-unit-card .unit-name { font-size: 1.5rem; font-weight: 700; margin-bottom: .2rem; }
-    .tv-unit-card .unit-sub { font-size: .95rem; opacity: .75; margin-bottom: .8rem; }
-    .tv-unit-card .unit-status { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; letter-spacing: .03em; }
-    .tv-unit-card .unit-timer { font-size: 2.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-    .tv-unit-card .unit-player { font-size: .95rem; opacity: .85; margin-top: .3rem; }
+    .tv-unit-card .unit-name { font-size: clamp(1.1rem, 3vw, 1.5rem); font-weight: 700; margin-bottom: .2rem; }
+    .tv-unit-card .unit-sub { font-size: clamp(0.8rem, 2vw, 0.95rem); opacity: .75; margin-bottom: .8rem; }
+    .tv-unit-card .unit-status { font-size: clamp(0.85rem, 2vw, 1rem); font-weight: 600; margin-bottom: .5rem; letter-spacing: .03em; }
+    .tv-unit-card .unit-timer { font-size: clamp(1.5rem, 5vw, 2.2rem); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .tv-unit-card .unit-player { font-size: clamp(0.8rem, 2vw, 0.95rem); opacity: .85; margin-top: .3rem; }
   </style>
 </head>
 <body>

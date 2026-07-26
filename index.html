@@ -146,6 +146,8 @@
   }
 </style>
 
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
   
   <style>
     #loginView {
@@ -225,6 +227,7 @@
   <nav class="nav flex-column" id="sidebarNav">
     <a class="nav-link active" href="#" data-page="dashboard"><i class="fa-solid fa-chart-line"></i>Dashboard</a>
     <a class="nav-link" href="#" data-page="kasir"><i class="fa-solid fa-cash-register"></i>Kasir</a>
+    <a class="nav-link" href="#" data-page="reservasi"><i class="fa-solid fa-calendar-check"></i>Reservasi</a>
     <a class="nav-link" href="#" data-page="playstation"><i class="fa-solid fa-gamepad"></i>PlayStation</a>
     <a class="nav-link" href="#" data-page="pelanggan"><i class="fa-solid fa-users"></i>Pelanggan</a>
     <a class="nav-link" href="#" data-page="produk"><i class="fa-solid fa-box"></i>Produk</a>
@@ -239,11 +242,11 @@
 
     <div class="app-main">
       <nav class="app-navbar d-flex align-items-center justify-content-between px-3 py-2">
-  <div class="d-flex align-items-center gap-3">
-    <button class="btn btn-sm btn-light d-lg-none" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
-    <h5 class="mb-0 fw-semibold" id="pageTitle">Dashboard</h5>
+  <div class="d-flex align-items-center gap-3" style="min-width:0;">
+    <button class="btn btn-sm btn-light d-lg-none flex-shrink-0" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+    <h5 class="mb-0 fw-semibold text-truncate" id="pageTitle">Dashboard</h5>
   </div>
-  <div class="d-flex align-items-center gap-2">
+  <div class="d-flex align-items-center gap-2 flex-shrink-0">
     <button class="btn btn-sm btn-light" onclick="toggleDarkMode()" title="Dark mode">
       <i class="fa-solid fa-moon"></i>
     </button>
@@ -251,7 +254,7 @@
       <div class="fw-semibold small" id="navUserName">-</div>
       <div class="text-muted" style="font-size:.72rem;" id="navUserRole">-</div>
     </div>
-    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:38px;height:38px;">
+    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:38px;height:38px;">
       <i class="fa-solid fa-user"></i>
     </div>
   </div>
@@ -323,7 +326,9 @@
     <div class="col-lg-8">
       <div class="card-glass p-3 mb-3">
         <h6 class="fw-semibold mb-3">Grafik Pendapatan (7 Hari Terakhir)</h6>
-        <canvas id="chartPendapatan" height="110"></canvas>
+        <div style="position:relative; height:260px;">
+          <canvas id="chartPendapatan"></canvas>
+        </div>
       </div>
     </div>
     <div class="col-lg-4">
@@ -372,7 +377,12 @@
           tension: .35
         }]
       },
-      options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => 'Rp' + v.toLocaleString('id-ID') } } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { ticks: { callback: v => 'Rp' + v.toLocaleString('id-ID') } } }
+      }
     });
 
     const list = document.getElementById('listAktivitas');
@@ -462,7 +472,7 @@
 
 <!-- Modal Sesi Berjalan -->
 <div class="modal fade" id="modalSession" tabindex="-1" data-bs-backdrop="static">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h6 class="modal-title fw-semibold">Sesi Rental &mdash; <span id="sessionUnitName"></span></h6>
@@ -1003,6 +1013,154 @@
   }
 </script>
 
+          <div id="page-reservasi" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h6 class="fw-semibold mb-0">Reservasi Terjadwal</h6>
+    <div class="d-flex gap-2 align-items-center">
+      <select class="form-select form-select-sm" id="resFilterStatus" style="width:auto;" onchange="loadReservasi()">
+        <option value="">Semua Status</option>
+        <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
+        <option value="Dikonfirmasi">Dikonfirmasi</option>
+        <option value="Diproses">Diproses</option>
+        <option value="Dibatalkan">Dibatalkan</option>
+      </select>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadReservasi()"><i class="fa-solid fa-rotate"></i></button>
+      <button class="btn btn-sm btn-outline-primary" onclick="copyBookingLink()"><i class="fa-solid fa-link me-1"></i>Salin Link Reservasi</button>
+    </div>
+  </div>
+
+  <div class="card-glass p-3">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Waktu Main</th><th>Pelanggan</th><th>Unit</th><th>Durasi</th>
+            <th>Tarif</th><th>Status</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="resTableBody"><tr><td colspan="7" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function loadReservasi() {
+    const token = getToken();
+    const status = document.getElementById('resFilterStatus').value;
+    try {
+      const res = await api('listReservations', token, status ? { status } : null);
+      if (!res.success) {
+        toastError(res.message);
+        document.getElementById('resTableBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Gagal memuat: ' + res.message + '</td></tr>';
+        return;
+      }
+
+      const now = Date.now();
+      document.getElementById('resTableBody').innerHTML = res.data.map(r => {
+        const waktu = new Date(r.WaktuMulai);
+        const isDue = waktu.getTime() <= now && (r.Status === 'Dikonfirmasi' || r.Status === 'Menunggu Konfirmasi');
+        const badgeClass = {
+          'Menunggu Konfirmasi': 'bg-warning text-dark',
+          'Dikonfirmasi': 'bg-info text-dark',
+          'Diproses': 'bg-success',
+          'Dibatalkan': 'bg-secondary'
+        }[r.Status] || 'bg-secondary';
+
+        return `
+          <tr class="${isDue ? 'table-warning' : ''}">
+            <td>
+              ${formatDateTimeShort(r.WaktuMulai)}
+              ${isDue ? '<div class="small text-danger fw-semibold">Sudah waktunya!</div>' : ''}
+            </td>
+            <td>${r.NamaPelanggan}<div class="text-muted small">${r.NoHP || '-'}</div></td>
+            <td>${r.NomorPS}</td>
+            <td>${r.EstimasiMenit} menit</td>
+            <td>${r.TarifType}</td>
+            <td><span class="badge ${badgeClass}">${r.Status}</span></td>
+            <td>
+              ${r.Status === 'Menunggu Konfirmasi' ? `
+                <button class="btn btn-sm btn-outline-success" onclick="doConfirmReservasi('${r.ID}')" title="Konfirmasi"><i class="fa-solid fa-check"></i></button>
+              ` : ''}
+              ${(r.Status === 'Menunggu Konfirmasi' || r.Status === 'Dikonfirmasi') ? `
+                <button class="btn btn-sm btn-outline-primary" onclick="doConvertReservasi('${r.ID}')" title="Proses ke Kasir"><i class="fa-solid fa-cash-register"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="doCancelReservasi('${r.ID}')" title="Batalkan"><i class="fa-solid fa-xmark"></i></button>
+              ` : ''}
+            </td>
+          </tr>`;
+      }).join('') || '<tr><td colspan="7" class="text-center text-muted">Belum ada reservasi.</td></tr>';
+    } catch (err) {
+      toastError('Gagal terhubung ke server: ' + err);
+      document.getElementById('resTableBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger">Gagal terhubung ke server.</td></tr>';
+    }
+  }
+
+  async function doConfirmReservasi(id) {
+    const token = getToken();
+    showLoading('Mengonfirmasi...');
+    try {
+      const res = await api('confirmReservation', token, id);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      toastSuccess('Reservasi dikonfirmasi.');
+      loadReservasi();
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  async function doCancelReservasi(id) {
+    if (!(await confirmAction('Batalkan reservasi ini?'))) return;
+    const token = getToken();
+    showLoading('Membatalkan...');
+    try {
+      const res = await api('cancelBooking', token, id, '');
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      toastSuccess('Reservasi dibatalkan.');
+      loadReservasi();
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  async function doConvertReservasi(id) {
+    if (!(await confirmAction('Proses reservasi ini ke Kasir?', 'Pastikan pelanggan sudah datang dan unitnya kosong.'))) return;
+    const token = getToken();
+    showLoading('Memproses...');
+    try {
+      const res = await api('convertReservationToSession', token, id);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      toastSuccess(res.message);
+      loadReservasi();
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  function copyBookingLink() {
+    let bookingUrl;
+    // Mode statis (GitHub Pages/fetch) mendefinisikan API_BASE_URL secara global
+    // lewat config.js -- kalau ada & sudah diisi, link reservasi memakai domain
+    // situs statis sendiri (booking.html), bukan parameter ?page= Apps Script.
+    if (typeof API_BASE_URL !== 'undefined' && API_BASE_URL && API_BASE_URL.indexOf('PASTE_URL') === -1) {
+      bookingUrl = window.location.href.split('?')[0].replace(/index\.html$/, '') + 'booking.html';
+    } else {
+      bookingUrl = window.location.href.split('?')[0] + '?page=booking';
+    }
+
+    navigator.clipboard.writeText(bookingUrl).then(() => {
+      toastSuccess('Link reservasi disalin! Bagikan ke pelanggan.');
+    }).catch(() => {
+      Swal.fire({ title: 'Link Reservasi', html: `<input class="form-control" value="${bookingUrl}" onclick="this.select()" readonly>`, confirmButtonColor: '#4f46e5' });
+    });
+  }
+</script>
+
           <div id="page-playstation" class="page-section" style="display:none;">
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h6 class="fw-semibold mb-0">Manajemen Unit PlayStation</h6>
@@ -1500,8 +1658,8 @@
   </div>
 
   <div class="row g-3 mb-3">
-    <div class="col-lg-6"><div class="card-glass p-3"><h6 class="fw-semibold small mb-2">PlayStation Terlaris</h6><canvas id="chartPS" height="160"></canvas></div></div>
-    <div class="col-lg-6"><div class="card-glass p-3"><h6 class="fw-semibold small mb-2">Produk Terlaris</h6><canvas id="chartProduk" height="160"></canvas></div></div>
+    <div class="col-lg-6"><div class="card-glass p-3"><h6 class="fw-semibold small mb-2">PlayStation Terlaris</h6><div style="position:relative; height:220px;"><canvas id="chartPS"></canvas></div></div></div>
+    <div class="col-lg-6"><div class="card-glass p-3"><h6 class="fw-semibold small mb-2">Produk Terlaris</h6><div style="position:relative; height:220px;"><canvas id="chartProduk"></canvas></div></div></div>
   </div>
 
   <div class="card-glass p-3">
@@ -1558,7 +1716,7 @@
     chartPSInstance = new Chart(document.getElementById('chartPS'), {
       type: 'bar',
       data: { labels: psLabels, datasets: [{ label: 'Sesi', data: psValues, backgroundColor: '#4f46e5' }] },
-      options: { plugins: { legend: { display: false } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
     const prodLabels = Object.keys(d.produkTerlaris);
@@ -1566,7 +1724,8 @@
     if (chartProdukInstance) chartProdukInstance.destroy();
     chartProdukInstance = new Chart(document.getElementById('chartProduk'), {
       type: 'doughnut',
-      data: { labels: prodLabels, datasets: [{ data: prodValues, backgroundColor: ['#4f46e5','#06b6d4','#22c55e','#f59e0b','#ef4444','#7c3aed'] } ] }
+      data: { labels: prodLabels, datasets: [{ data: prodValues, backgroundColor: ['#4f46e5','#06b6d4','#22c55e','#f59e0b','#ef4444','#7c3aed'] } ] },
+      options: { responsive: true, maintainAspectRatio: false }
     });
   }
 
@@ -1613,6 +1772,28 @@
         <div class="mb-3"><label class="form-label small">Jam Operasional</label><input class="form-control" id="setJamOperasional"></div>
         <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="saveSettings()">Simpan Pengaturan</button>
       </div>
+
+      <div class="card-glass p-3">
+        <h6 class="fw-semibold mb-2"><i class="fa-brands fa-whatsapp text-success me-1"></i>Pengingat WhatsApp Otomatis</h6>
+        <p class="text-muted small mb-3">
+          Kirim pengingat WA otomatis ke pelanggan 15 menit sebelum jadwal reservasi terkonfirmasi mereka.
+          Memakai layanan <a href="https://fonnte.com" target="_blank" rel="noopener">Fonnte</a> (gratis untuk
+          pemakaian dasar) -- hubungkan nomor WhatsApp Anda sendiri di sana untuk dapat token API-nya.
+        </p>
+        <div class="mb-2">
+          <label class="form-label small">Token API Fonnte</label>
+          <input type="text" class="form-control" id="setFonnteToken" placeholder="Tempel token dari dashboard Fonnte">
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-success" onclick="saveWhatsappToken()">Simpan Token</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="openTestWhatsapp()">Kirim Pesan Uji Coba</button>
+        </div>
+        <div class="alert alert-warning small mt-3 mb-0">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Setelah token diisi & disimpan, jadwal pengecekan otomatis perlu dipasang <strong>sekali saja</strong>:
+          buka editor Apps Script &rarr; pilih fungsi <code>setupReminderTrigger</code> di dropdown Run &rarr; klik Run.
+        </div>
+      </div>
     </div>
     <div class="col-lg-6">
       <div class="card-glass p-3">
@@ -1626,6 +1807,22 @@
             <tbody id="userTableBody"><tr><td colspan="6" class="text-center text-muted">Memuat...</td></tr></tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalTestWhatsapp" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title fw-semibold">Kirim Pesan Uji Coba WhatsApp</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <label class="form-label small">Nomor HP Tujuan</label>
+        <input type="text" class="form-control" id="testWaNoHP" placeholder="08xxxxxxxxxx">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-success" onclick="submitTestWhatsapp()"><i class="fa-brands fa-whatsapp me-1"></i>Kirim</button>
       </div>
     </div>
   </div>
@@ -1673,6 +1870,7 @@
         document.getElementById('setPajak').value = s.Pajak || '0';
         document.getElementById('setPembulatan').value = s.PembulatanMenit || '15';
         document.getElementById('setJamOperasional').value = s.JamOperasional || '';
+        document.getElementById('setFonnteToken').value = s.FonnteToken || '';
         showLogoPreview(s.Logo || '');
       } else {
         toastError(res.message);
@@ -1729,6 +1927,44 @@
       const res = await api('saveAppSettings', token, payload);
       hideLoading();
       if (!res.success) { toastError(res.message); return; }
+      toastSuccess(res.message);
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  async function saveWhatsappToken() {
+    const token = getToken();
+    const payload = { FonnteToken: document.getElementById('setFonnteToken').value.trim() };
+    showLoading('Menyimpan token...');
+    try {
+      const res = await api('saveAppSettings', token, payload);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      toastSuccess('Token Fonnte tersimpan.');
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  function openTestWhatsapp() {
+    document.getElementById('testWaNoHP').value = '';
+    new bootstrap.Modal('#modalTestWhatsapp').show();
+  }
+
+  async function submitTestWhatsapp() {
+    const token = getToken();
+    const noHP = document.getElementById('testWaNoHP').value.trim();
+    if (!noHP) { toastError('Nomor HP tujuan wajib diisi.'); return; }
+
+    showLoading('Mengirim pesan uji coba...');
+    try {
+      const res = await api('testWhatsappSetting', token, noHP);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+      bootstrap.Modal.getInstance(document.getElementById('modalTestWhatsapp')).hide();
       toastSuccess(res.message);
     } catch (err) {
       hideLoading();
@@ -1935,12 +2171,12 @@
 
     // ---------------- Router antar modul di dalam appView ----------------
     const PAGE_TITLES = {
-      dashboard: 'Dashboard', kasir: 'Kasir', playstation: 'PlayStation',
+      dashboard: 'Dashboard', kasir: 'Kasir', reservasi: 'Reservasi', playstation: 'PlayStation',
       pelanggan: 'Pelanggan', produk: 'Produk', pengeluaran: 'Pengeluaran',
       laporan: 'Laporan', pengaturan: 'Pengaturan'
     };
     const PAGE_LOADERS = {
-      dashboard: loadDashboard, kasir: loadKasirUnits, playstation: loadPlaystationTable,
+      dashboard: loadDashboard, kasir: loadKasirUnits, reservasi: loadReservasi, playstation: loadPlaystationTable,
       pelanggan: loadCustomerTable, produk: loadProdukTable, pengeluaran: loadExpenseTable,
       laporan: () => {}, pengaturan: loadSettingsPage
     };

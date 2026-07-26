@@ -1,6 +1,11 @@
 // ============================================================
-  // Wrapper Promise di atas fetch() ke Apps Script Web App (API JSON).
-  // Semua pemanggilan backend WAJIB lewat fungsi api() ini.
+  // Wrapper Promise di atas google.script.run supaya bisa async/await.
+  // Semua pemanggilan backend WAJIB lewat fungsi ini agar tidak
+  // pernah reload / navigasi halaman.
+  //
+  // CATATAN: build_static.py mengganti isi fungsi api() di bawah ini
+  // (bukan komentar ini) dengan versi fetch() saat membangun versi
+  // GitHub Pages -- lihat static-site/api.js untuk hasilnya.
   // ============================================================
   async function api(fnName, ...args) {
     if (!API_BASE_URL || API_BASE_URL.indexOf('PASTE_URL') !== -1) {
