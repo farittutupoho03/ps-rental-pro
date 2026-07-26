@@ -2,6 +2,8 @@
 <html>
 <head>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -110,6 +112,11 @@
   .ps-card.kosong { background: linear-gradient(135deg, #22c55e, #16a34a); }
   .ps-card.dipakai { background: linear-gradient(135deg, #ef4444, #b91c1c); }
   .ps-card.maintenance { background: linear-gradient(135deg, #f59e0b, #d97706); }
+  .ps-card.menunggu-mulai {
+    background: linear-gradient(135deg, #f59e0b, #b45309) !important;
+    animation: pulseWaiting 1.6s ease-in-out infinite;
+  }
+  @keyframes pulseWaiting { 0%,100% { box-shadow: 0 0 0 rgba(245,158,11,0); } 50% { box-shadow: 0 0 22px rgba(245,158,11,0.55); } }
   .ps-card .badge-status { background: rgba(255,255,255,.25); }
   .ps-card .timer { font-size: 1.4rem; font-weight: 600; }
 
@@ -347,6 +354,7 @@
     document.getElementById('statPelanggan').textContent = d.jumlahPelanggan;
     document.getElementById('statProdukTerjual').textContent = d.produkTerjualHariIni;
 
+    await ensureChartJs();
     const ctx = document.getElementById('chartPendapatan');
     const labels = d.grafikPendapatan.map(x => x.tanggal.slice(5));
     const values = d.grafikPendapatan.map(x => x.total);
@@ -392,10 +400,15 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title fw-semibold">Mulai Sesi Rental &mdash; <span id="startUnitName"></span></h6>
+        <h6 class="modal-title fw-semibold">Data Pelanggan Baru &mdash; <span id="startUnitName"></span></h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <div class="alert alert-info py-2 small mb-3">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Timer <strong>belum</strong> mulai berjalan setelah ini disimpan. Unit akan berstatus
+          "Menunggu Persiapan" sampai Anda menekan tombol <strong>Mulai Bermain</strong>.
+        </div>
         <div class="mb-3">
           <label class="form-label small fw-semibold">Nama Pelanggan</label>
           <input type="text" class="form-control" id="startCustomerName" list="customerList" placeholder="Ketik atau pilih pelanggan">
@@ -408,12 +421,40 @@
             <option value="Member">Member</option>
           </select>
         </div>
+        <div class="mb-1">
+          <label class="form-label small fw-semibold">Estimasi Waktu Main (menit)</label>
+          <input type="number" class="form-control" id="startEstimasiMenit" min="1" placeholder="Kosongkan jika tidak dibatasi">
+          <div class="form-text">Isi kalau mau ada hitung mundur & peringatan otomatis saat waktu habis. Kosongkan untuk main tanpa batas waktu.</div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
         <button class="btn btn-brand" style="background:#4f46e5;color:#fff;" onclick="submitStartSession()">
-          <i class="fa-solid fa-play me-1"></i>Mulai Main
+          <i class="fa-solid fa-floppy-disk me-1"></i>Simpan &amp; Siapkan Unit
         </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Menunggu Persiapan -->
+<div class="modal fade" id="modalWaiting" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-semibold">Menunggu Persiapan &mdash; <span id="waitUnitName"></span></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-center">
+        <i class="fa-solid fa-hourglass-half text-warning mb-2" style="font-size:2.2rem;"></i>
+        <p class="mb-1">Data pelanggan sudah tersimpan, timer <strong>belum berjalan</strong>.</p>
+        <div class="fw-semibold fs-5 mb-1" id="waitCustomerName">-</div>
+        <div class="text-muted small mb-3" id="waitInfo"></div>
+        <p class="text-muted small mb-0">Siapkan unit fisiknya dulu, lalu tekan tombol di bawah kalau pelanggan sudah siap bermain.</p>
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <button class="btn btn-outline-danger btn-sm" onclick="submitCancelReservation()"><i class="fa-solid fa-xmark me-1"></i>Batalkan Reservasi</button>
+        <button class="btn btn-success" onclick="submitStartPlaying()"><i class="fa-solid fa-play me-1"></i>Mulai Bermain Sekarang</button>
       </div>
     </div>
   </div>
@@ -432,10 +473,29 @@
           <div class="col-6">
             <div class="text-muted small">Pelanggan</div>
             <div class="fw-semibold" id="sessionCustomer">-</div>
+            <div class="text-muted small mt-2">Estimasi Tagihan Sementara</div>
+            <div class="fw-bold text-success" id="sessionBillEstimate">Rp0</div>
           </div>
           <div class="col-6 text-end">
-            <div class="text-muted small">Durasi Berjalan</div>
+            <div class="text-muted small" id="sessionTimerLabel">Durasi Berjalan</div>
             <div class="fw-bold text-primary" id="sessionTimer">00:00:00</div>
+            <div class="text-muted" style="font-size:.72rem;" id="sessionEstimasiInfo"></div>
+          </div>
+        </div>
+
+        <div class="card-glass p-2 mb-3" style="background:#f8f9fc;">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+              <label class="small fw-semibold mb-0">Atur Waktu Main</label>
+              <input type="number" class="form-control form-control-sm" id="sessionEstimasiInput" style="width:90px;" min="0" placeholder="menit">
+              <button class="btn btn-sm btn-outline-primary" onclick="submitUpdateEstimasi()">Simpan</button>
+            </div>
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-outline-secondary" onclick="addEstimasiMenit(15)">+15</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="addEstimasiMenit(30)">+30</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="addEstimasiMenit(60)">+60</button>
+              <button class="btn btn-sm btn-outline-danger" onclick="clearEstimasi()">Tanpa Batas</button>
+            </div>
           </div>
         </div>
 
@@ -508,8 +568,10 @@
 <script>
   let currentSessionUnit = null;
   let currentSessionTrx = null;
+  let currentSessionUnitData = null;
   let sessionTimerInterval = null;
   let productsCache = null;
+  let cardTimerIntervals = [];
 
   async function loadKasirUnits() {
     const token = getToken();
@@ -522,38 +584,167 @@
     document.getElementById('customerList').innerHTML = (custRes.data || [])
       .map(c => `<option value="${c.Nama}">`).join('');
 
+    // Bersihkan interval kartu sebelumnya supaya tidak menumpuk saat refresh.
+    cardTimerIntervals.forEach(clearInterval);
+    cardTimerIntervals = [];
+
     const grid = document.getElementById('psCardGrid');
     grid.innerHTML = unitsRes.data.map(u => {
       const statusClass = u.Status === 'Kosong' ? 'kosong' : (u.Status === 'Dipakai' ? 'dipakai' : 'maintenance');
       const icon = u.Jenis === 'PS5' ? 'fa-gamepad' : 'fa-gamepad';
       return `
         <div class="col-6 col-md-4 col-lg-3">
-          <div class="ps-card ${statusClass}" onclick="handlePsCardClick('${u.ID}','${u.NamaPS}','${u.Status}')">
+          <div class="ps-card ${statusClass}" id="psCard-${u.ID}" onclick="handlePsCardClick('${u.ID}','${u.NamaPS}','${u.Status}')">
             <i class="fa-solid ${icon} fs-3 mb-2"></i>
             <div class="fw-bold">${u.NamaPS}</div>
             <div class="small opacity-75">${u.Jenis} &middot; Ruang ${u.NomorRuangan || '-'}</div>
-            <span class="badge badge-status mt-2">${u.Status}</span>
+            <span class="badge badge-status mt-2" id="cardStatusBadge-${u.ID}">${u.Status}</span>
+            ${u.Status === 'Dipakai' ? `
+              <div id="cardActiveArea-${u.ID}">
+                <div class="fw-bold mt-2" style="font-size:1.15rem;" id="cardTimer-${u.ID}">...</div>
+                <div class="small opacity-75" id="cardPlayer-${u.ID}"></div>
+                <div class="fw-semibold mt-1" style="font-size:.95rem;" id="cardBill-${u.ID}"></div>
+              </div>
+            ` : ''}
           </div>
         </div>`;
     }).join('');
+
+    // Mulai timer realtime per kartu untuk unit yang sedang dipakai.
+    // Diambil PARALEL (Promise.all), bukan satu per satu, supaya kartu
+    // dengan banyak unit aktif tetap cepat dimuat.
+    const activeUnits = unitsRes.data.filter(u => u.Status === 'Dipakai');
+    const sesiResults = await Promise.all(activeUnits.map(u => api('getActiveSession', token, u.ID)));
+    activeUnits.forEach((u, idx) => {
+      const sesiRes = sesiResults[idx];
+      if (!sesiRes.success || !sesiRes.data) return;
+      const trx = sesiRes.data.transaksi;
+      const playerEl = document.getElementById('cardPlayer-' + u.ID);
+
+      if (!trx.JamMasuk) {
+        // Sesi masih menunggu persiapan -- belum ada timer, tampilkan
+        // status berbeda supaya jelas ini belum benar-benar berjalan.
+        const cardEl = document.getElementById('psCard-' + u.ID);
+        const badgeEl = document.getElementById('cardStatusBadge-' + u.ID);
+        const areaEl = document.getElementById('cardActiveArea-' + u.ID);
+        if (cardEl) cardEl.classList.add('menunggu-mulai');
+        if (badgeEl) badgeEl.textContent = 'Menunggu Persiapan';
+        if (areaEl) areaEl.innerHTML = `
+          <div class="small fw-semibold mt-2">\u{1F464} ${trx.NamaPelanggan}</div>
+          <button class="btn btn-sm btn-light mt-2 fw-semibold" onclick="event.stopPropagation(); openWaitingModal('${u.ID}','${u.NamaPS}')">
+            <i class="fa-solid fa-play me-1"></i>Mulai Bermain
+          </button>`;
+        return;
+      }
+
+      if (playerEl) playerEl.textContent = '\u{1F464} ' + trx.NamaPelanggan;
+      startCardTimer_(u.ID, new Date(trx.JamMasuk), Number(trx.EstimasiMenit) || 0, trx, u);
+    });
   }
+
+  function startCardTimer_(unitId, jamMasuk, estimasiMenit, trx, unit) {
+    const el = document.getElementById('cardTimer-' + unitId);
+    if (!el) return;
+    const targetEnd = estimasiMenit > 0 ? jamMasuk.getTime() + estimasiMenit * 60000 : null;
+    const tarifPerJam = trx.TarifType === 'Member' ? Number(unit.TarifMember) : Number(unit.TarifPerJam);
+    const produkLain = Number(trx.SubtotalMakanan || 0) + Number(trx.SubtotalMinuman || 0) + Number(trx.SubtotalAksesoris || 0);
+
+    const tick = () => {
+      const target = document.getElementById('cardTimer-' + unitId);
+      const billEl = document.getElementById('cardBill-' + unitId);
+      if (!target) { clearInterval(interval); return; }
+      if (targetEnd) {
+        const diffMs = targetEnd - Date.now();
+        target.textContent = (diffMs > 0 ? '\u23F1 ' + formatHms_(diffMs) : '\u26A0 +' + formatHms_(-diffMs));
+        target.style.color = diffMs > 0 ? '' : '#fff176';
+      } else {
+        target.textContent = '\u23F1 ' + formatHms_(Date.now() - jamMasuk.getTime());
+      }
+
+      if (billEl) {
+        const elapsedJam = (Date.now() - jamMasuk.getTime()) / 3600000;
+        const sewaSementara = elapsedJam * tarifPerJam;
+        billEl.textContent = '\u{1F4B0} ' + formatRupiah(sewaSementara + produkLain);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    cardTimerIntervals.push(interval);
+  }
+
+  let currentWaitingTrxId = null;
 
   async function handlePsCardClick(id, nama, status) {
     if (status === 'Kosong') {
       currentSessionUnit = { id, nama };
       document.getElementById('startUnitName').textContent = nama;
       document.getElementById('startCustomerName').value = '';
+      document.getElementById('startEstimasiMenit').value = '';
       new bootstrap.Modal('#modalStart').show();
     } else if (status === 'Dipakai') {
-      await openSessionModal(id, nama);
+      // Cek dulu apakah sesi ini sudah benar-benar mulai (JamMasuk terisi)
+      // atau masih menunggu persiapan -- beda modal yang dibuka.
+      const token = getToken();
+      const res = await api('getActiveSession', token, id);
+      if (!res.success || !res.data) { toastError('Sesi tidak ditemukan.'); return; }
+
+      if (!res.data.transaksi.JamMasuk) {
+        openWaitingModal(id, nama);
+      } else {
+        await openSessionModal(id, nama);
+      }
     } else {
       toastError('Unit sedang dalam status Maintenance.');
     }
   }
 
+  async function openWaitingModal(id, nama) {
+    const token = getToken();
+    const res = await api('getActiveSession', token, id);
+    if (!res.success || !res.data) { toastError('Sesi tidak ditemukan.'); return; }
+
+    currentSessionUnit = { id, nama };
+    currentWaitingTrxId = res.data.transaksi.IDTransaksi;
+    document.getElementById('waitUnitName').textContent = nama;
+    document.getElementById('waitCustomerName').textContent = res.data.transaksi.NamaPelanggan;
+    const estimasi = Number(res.data.transaksi.EstimasiMenit) || 0;
+    document.getElementById('waitInfo').textContent = 'Tarif: ' + (res.data.transaksi.TarifType || 'Reguler') +
+      (estimasi > 0 ? ' \u2022 Estimasi ' + estimasi + ' menit' : ' \u2022 Tanpa batas waktu');
+    new bootstrap.Modal('#modalWaiting').show();
+  }
+
+  async function submitStartPlaying() {
+    const token = getToken();
+    showLoading('Memulai sesi...');
+    const res = await api('startPlaying', token, currentWaitingTrxId);
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+
+    bootstrap.Modal.getInstance(document.getElementById('modalWaiting')).hide();
+    toastSuccess('Sesi dimulai! Timer berjalan sekarang.');
+
+    // Langsung buka modal sesi lengkap supaya kasir bisa lanjut input pesanan dsb.
+    await openSessionModal(currentSessionUnit.id, currentSessionUnit.nama);
+    loadKasirUnits();
+  }
+
+  async function submitCancelReservation() {
+    if (!(await confirmAction('Batalkan reservasi ini?', 'Data pelanggan akan dibatalkan dan unit kembali kosong.'))) return;
+    const token = getToken();
+    showLoading('Membatalkan...');
+    const res = await api('cancelReservation', token, currentWaitingTrxId);
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+
+    bootstrap.Modal.getInstance(document.getElementById('modalWaiting')).hide();
+    toastSuccess('Reservasi dibatalkan.');
+    loadKasirUnits();
+  }
+
   async function submitStartSession() {
     const namaPelanggan = document.getElementById('startCustomerName').value.trim();
     const tarifType = document.getElementById('startTarifType').value;
+    const estimasiMenit = document.getElementById('startEstimasiMenit').value;
     if (!namaPelanggan) { toastError('Nama pelanggan wajib diisi.'); return; }
 
     showLoading('Memulai sesi...');
@@ -565,12 +756,12 @@
       await api('createCustomer', token, { nama: namaPelanggan });
     }
 
-    const res = await api('startRentalSession', token, { nomorPS: currentSessionUnit.id, namaPelanggan, tarifType });
+    const res = await api('startRentalSession', token, { nomorPS: currentSessionUnit.id, namaPelanggan, tarifType, estimasiMenit });
     hideLoading();
     if (!res.success) { toastError(res.message); return; }
 
     bootstrap.Modal.getInstance(document.getElementById('modalStart')).hide();
-    toastSuccess('Sesi dimulai untuk ' + namaPelanggan);
+    toastSuccess('Data tersimpan. Siapkan unit, lalu klik kartu ini untuk mulai bermain.');
     loadKasirUnits();
   }
 
@@ -581,13 +772,47 @@
 
     currentSessionUnit = { id: nomorPS, nama };
     currentSessionTrx = res.data.transaksi;
+    currentSessionUnitData = res.data.unit;
     document.getElementById('sessionUnitName').textContent = nama;
     document.getElementById('sessionCustomer').textContent = currentSessionTrx.NamaPelanggan;
 
     renderOrderTable(res.data.detail);
     await loadProductTabs();
-    startSessionTimer(new Date(currentSessionTrx.JamMasuk));
+    document.getElementById('sessionEstimasiInput').value = Number(currentSessionTrx.EstimasiMenit) || '';
+    startSessionTimer(new Date(currentSessionTrx.JamMasuk), Number(currentSessionTrx.EstimasiMenit) || 0);
     new bootstrap.Modal('#modalSession').show();
+  }
+
+  async function applyNewEstimasi_(newValue) {
+    const token = getToken();
+    showLoading('Memperbarui waktu...');
+    try {
+      const res = await api('updateSessionEstimasi', token, currentSessionTrx.IDTransaksi, newValue);
+      hideLoading();
+      if (!res.success) { toastError(res.message); return; }
+
+      currentSessionTrx.EstimasiMenit = res.data.estimasiMenit;
+      document.getElementById('sessionEstimasiInput').value = res.data.estimasiMenit || '';
+      startSessionTimer(new Date(res.data.jamMasuk), Number(res.data.estimasiMenit) || 0);
+      toastSuccess('Waktu main diperbarui.');
+    } catch (err) {
+      hideLoading();
+      toastError('Gagal terhubung ke server: ' + err);
+    }
+  }
+
+  function submitUpdateEstimasi() {
+    const val = Number(document.getElementById('sessionEstimasiInput').value) || 0;
+    applyNewEstimasi_(val);
+  }
+
+  function addEstimasiMenit(menit) {
+    const current = Number(currentSessionTrx.EstimasiMenit) || 0;
+    applyNewEstimasi_(current + menit);
+  }
+
+  function clearEstimasi() {
+    applyNewEstimasi_(0);
   }
 
   function renderOrderTable(details) {
@@ -598,15 +823,80 @@
     `).join('');
   }
 
-  function startSessionTimer(jamMasuk) {
+  let timeUpAlertShown = false;
+
+  function startSessionTimer(jamMasuk, estimasiMenit) {
     clearInterval(sessionTimerInterval);
-    sessionTimerInterval = setInterval(() => {
-      const diffMs = Date.now() - jamMasuk.getTime();
-      const h = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
-      const m = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
-      const s = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
-      document.getElementById('sessionTimer').textContent = `${h}:${m}:${s}`;
-    }, 1000);
+    timeUpAlertShown = false;
+
+    const timerEl = document.getElementById('sessionTimer');
+    const labelEl = document.getElementById('sessionTimerLabel');
+    const infoEl = document.getElementById('sessionEstimasiInfo');
+    const billEl = document.getElementById('sessionBillEstimate');
+
+    function updateBillEstimate() {
+      if (!billEl || !currentSessionTrx || !currentSessionUnitData) return;
+      const tarifPerJam = currentSessionTrx.TarifType === 'Member'
+        ? Number(currentSessionUnitData.TarifMember)
+        : Number(currentSessionUnitData.TarifPerJam);
+      const elapsedJam = (Date.now() - jamMasuk.getTime()) / 3600000;
+      const sewaSementara = elapsedJam * tarifPerJam;
+      const produkLain = Number(currentSessionTrx.SubtotalMakanan || 0)
+        + Number(currentSessionTrx.SubtotalMinuman || 0)
+        + Number(currentSessionTrx.SubtotalAksesoris || 0);
+      billEl.textContent = formatRupiah(sewaSementara + produkLain);
+    }
+
+    if (estimasiMenit > 0) {
+      const targetEnd = jamMasuk.getTime() + estimasiMenit * 60000;
+      labelEl.textContent = 'Sisa Waktu';
+      infoEl.textContent = 'Estimasi ' + estimasiMenit + ' menit \u2014 selesai pukul ' +
+        new Date(targetEnd).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+      sessionTimerInterval = setInterval(() => {
+        const diffMs = targetEnd - Date.now();
+        if (diffMs > 0) {
+          timerEl.textContent = formatHms_(diffMs);
+          timerEl.classList.remove('text-danger');
+          timerEl.classList.add(diffMs < 5 * 60000 ? 'text-warning' : 'text-primary');
+          timerEl.classList.remove(diffMs < 5 * 60000 ? 'text-primary' : 'text-warning');
+        } else {
+          // Waktu habis -> mulai hitung waktu tambahan (overtime).
+          timerEl.textContent = '+' + formatHms_(-diffMs);
+          timerEl.classList.remove('text-primary', 'text-warning');
+          timerEl.classList.add('text-danger');
+          if (!timeUpAlertShown) {
+            timeUpAlertShown = true;
+            labelEl.textContent = 'Waktu Tambahan';
+            Swal.fire({
+              icon: 'warning',
+              title: 'Waktu Main Habis!',
+              text: `Sesi ${currentSessionUnit.nama} sudah melewati estimasi waktu. Segera konfirmasi ke pelanggan.`,
+              confirmButtonColor: '#4f46e5'
+            });
+          }
+        }
+        updateBillEstimate();
+      }, 1000);
+    } else {
+      labelEl.textContent = 'Durasi Berjalan';
+      infoEl.textContent = 'Tanpa batas waktu';
+      sessionTimerInterval = setInterval(() => {
+        const diffMs = Date.now() - jamMasuk.getTime();
+        timerEl.textContent = formatHms_(diffMs);
+        timerEl.classList.remove('text-danger', 'text-warning');
+        timerEl.classList.add('text-primary');
+        updateBillEstimate();
+      }, 1000);
+    }
+    updateBillEstimate();
+  }
+
+  function formatHms_(ms) {
+    const h = String(Math.floor(ms / 3600000)).padStart(2, '0');
+    const m = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
+    const s = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');
+    return `${h}:${m}:${s}`;
   }
 
   document.getElementById('modalSession').addEventListener('hidden.bs.modal', () => clearInterval(sessionTimerInterval));
@@ -660,7 +950,7 @@
   async function submitCheckout() {
     const token = getToken();
     const payload = {
-      tarifType: 'Reguler',
+      tarifType: currentSessionTrx.TarifType || 'Reguler',
       diskonNominal: Number(document.getElementById('chkDiskonNominal').value) || 0,
       diskonPersen: Number(document.getElementById('chkDiskonPersen').value) || 0,
       metodePembayaran: document.getElementById('chkMetodePembayaran').value
@@ -1257,10 +1547,11 @@
       <tr><td>${t.IDTransaksi}</td><td>${formatDateTimeShort(t.Tanggal)}</td><td>${t.NamaPelanggan}</td><td>${t.NomorPS}</td><td>${t.Kasir}</td><td class="text-end">${formatRupiah(t.GrandTotal)}</td></tr>
     `).join('') || '<tr><td colspan="6" class="text-center text-muted">Tidak ada data pada rentang ini.</td></tr>';
 
-    if (analyticsRes.success) renderReportCharts(analyticsRes.data);
+    if (analyticsRes.success) await renderReportCharts(analyticsRes.data);
   }
 
-  function renderReportCharts(d) {
+  async function renderReportCharts(d) {
+    await ensureChartJs();
     const psLabels = Object.keys(d.psTerlaris);
     const psValues = Object.values(d.psTerlaris);
     if (chartPSInstance) chartPSInstance.destroy();
@@ -1575,10 +1866,10 @@
 
   
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.6/dist/sweetalert2.all.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
   <script src="config.js"></script>
   <script src="api.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 
   <script>
     document.getElementById('loginYear').textContent = new Date().getFullYear();
@@ -1721,8 +2012,5 @@
       }
     })();
   </script>
-  <script src="config.js"></script>
-  <script src="api.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

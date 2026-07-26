@@ -1,11 +1,7 @@
 // ============================================================
-  // Wrapper Promise di atas google.script.run supaya bisa async/await.
-  // Semua pemanggilan backend WAJIB lewat fungsi ini agar tidak
-  // pernah reload / navigasi halaman.
+  // Wrapper Promise di atas fetch() ke Apps Script Web App (API JSON).
+  // Semua pemanggilan backend WAJIB lewat fungsi api() ini.
   // ============================================================
-  // GET sengaja dipakai (bukan POST) karena redirect internal Apps Script
-  // ke domain googleusercontent.com akan mengubah method POST menjadi GET
-  // lintas domain, sehingga body POST bisa hilang.
   async function api(fnName, ...args) {
     if (!API_BASE_URL || API_BASE_URL.indexOf('PASTE_URL') !== -1) {
       throw new Error('API_BASE_URL belum diisi di config.js. Buka file itu dan tempelkan URL Web App Anda.');
@@ -54,6 +50,24 @@
     if (!d) return '-';
     const dt = new Date(d);
     return dt.toLocaleDateString('id-ID') + ' ' + dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Chart.js sengaja TIDAK dimuat di awal (mempercepat loading pertama
+  // aplikasi untuk semua orang, termasuk yang cuma pakai modul Kasir/PS/
+  // Pelanggan sehari-hari) -- baru diambil sekali saat halaman Dashboard
+  // atau Laporan pertama kali dibuka.
+  let chartJsLoadPromise = null;
+  function ensureChartJs() {
+    if (window.Chart) return Promise.resolve();
+    if (chartJsLoadPromise) return chartJsLoadPromise;
+    chartJsLoadPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Gagal memuat Chart.js'));
+      document.head.appendChild(script);
+    });
+    return chartJsLoadPromise;
   }
 
   /**
