@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PS Rental Pro</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; }
+
+    #loadingScreen {
+      position: fixed; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(circle at top left, #4f46e5, #1e1b3a 60%);
+      color: #fff;
+      font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+      z-index: 10;
+      transition: opacity .3s ease;
+    }
+    .spinner {
+      width: 42px; height: 42px;
+      border: 4px solid rgba(255,255,255,0.25);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #appFrame {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      border: none;
+    }
+
+    #errorBox {
+      display: none;
+      position: fixed; inset: 0;
+      align-items: center; justify-content: center;
+      flex-direction: column;
+      background: #12141c; color: #e5e7eb;
+      font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+      text-align: center; padding: 2rem;
+      z-index: 11;
+    }
+    #errorBox a { color: #7c9cff; }
+  </style>
+</head>
+<body>
+
+  <div id="loadingScreen">
+    <div class="spinner"></div>
+    <p>Memuat PS Rental Pro...</p>
+  </div>
+
+  <!--
+    GANTI URL DI BAWAH INI dengan URL deployment Web App Apps Script Anda.
+    Contoh: https://script.google.com/macros/s/AKfycb.../exec
+  -->
+  <iframe
+    id="appFrame"
+    src="https://script.google.com/macros/s/AKfycbw6_oGl_Wwb0frblNKRZqz35V-U2GI6WXxqBzDjNWNrahL35FVviWbf4H4Bn7rqEud1XQ/exec"
+    title="PS Rental Pro"
+    allow="clipboard-write"
+  ></iframe>
+
+  <div id="errorBox">
+    <div>
+      <h2>Aplikasi belum terhubung</h2>
+      <p>URL Web App Apps Script belum diatur di file <code>index.html</code> pada baris <code>src="..."</code>.</p>
+    </div>
+  </div>
+
+  <script>
+    var frame = document.getElementById('appFrame');
+    var loading = document.getElementById('loadingScreen');
+    var errorBox = document.getElementById('errorBox');
+
+    if (frame.src.indexOf('GANTI_DENGAN_URL_WEB_APP_ANDA') !== -1) {
+      loading.style.display = 'none';
+      errorBox.style.display = 'flex';
+    } else {
+      frame.addEventListener('load', function () {
+        loading.style.opacity = '0';
+        setTimeout(function () { loading.style.display = 'none'; }, 300);
+      });
+      // Jaga-jaga jika event load tidak terpicu (beberapa browser dengan iframe cross-origin).
+      setTimeout(function () {
+        loading.style.opacity = '0';
+        setTimeout(function () { loading.style.display = 'none'; }, 300);
+      }, 4000);
+    }
+  </script>
+</body>
+</html>
