@@ -1,0 +1,27 @@
+{
+  "apiUrl": "https://script.google.com/macros/s/PASTE_DEPLOYMENT_ID/exec",
+  "bridgeKey": "PASTE_KUNCI_DARI_APLIKASI",
+  "bridgeId": "rental-utama",
+  "pollIntervalMs": 5000,
+  "commandTimeoutMs": 45000,
+  "devices": {
+    "PS001": {
+      "name": "PS 1",
+      "type": "PS5",
+      "playstationHostName": "PS5-000",
+      "tv": {
+        "mode": "adb",
+        "host": "192.168.1.50:5555"
+      }
+    },
+    "PS002": {
+      "name": "PS 2",
+      "type": "PS4",
+      "playstationHostName": "PS4-000",
+      "tv": {
+        "mode": "adb",
+        "host": "192.168.1.51:5555"
+      }
+    }
+  }
+}
