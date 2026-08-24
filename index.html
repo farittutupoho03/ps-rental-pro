@@ -233,6 +233,7 @@
     <a class="nav-link" href="#" data-page="pelanggan"><i class="fa-solid fa-users"></i>Pelanggan</a>
     <a class="nav-link" href="#" data-page="produk"><i class="fa-solid fa-box"></i>Produk</a>
     <a class="nav-link" href="#" data-page="pengeluaran"><i class="fa-solid fa-money-bill-wave"></i>Pengeluaran</a>
+    <a class="nav-link" href="#" data-page="invoice"><i class="fa-solid fa-file-invoice"></i>Invoice</a>
     <a class="nav-link" href="#" data-page="laporan"><i class="fa-solid fa-file-lines"></i>Laporan</a>
     <a class="nav-link role-owner-only" href="#" data-page="pengaturan" style="display:none;"><i class="fa-solid fa-gear"></i>Pengaturan</a>
     <hr class="text-white-50">
@@ -584,6 +585,59 @@
   let sessionTimerInterval = null;
   let productsCache = null;
   let cardTimerIntervals = [];
+  const autoFinishPromises_ = new Map();
+  const warning5Queued_ = new Set();
+
+  function queueFiveMinuteWarning_(unitId, trxId) {
+    const key = String(trxId || '');
+    if (!key || warning5Queued_.has(key)) return;
+    warning5Queued_.add(key);
+    queueDeviceCommandSafe_(
+      unitId,
+      'warning_5min',
+      'warning5:' + key,
+      'Sisa waktu bermain 5 menit',
+      false
+    );
+  }
+
+  function autoFinishSessionAtTimeout_(unitId, trx, unitName) {
+    const trxId = String(trx && trx.IDTransaksi || '');
+    if (!trxId) return Promise.resolve(null);
+    if (autoFinishPromises_.has(trxId)) return autoFinishPromises_.get(trxId);
+
+    const task = (async () => {
+      const payload = {
+        tarifType: trx.TarifType || 'Reguler',
+        diskonNominal: 0,
+        diskonPersen: 0,
+        metodePembayaran: 'Belum Dibayar (Otomatis)'
+      };
+      let result = null;
+      try {
+        result = await api('finishRentalSession', getToken(), trxId, payload);
+      } catch (err) {
+        console.error('Gagal menghentikan sesi otomatis:', err);
+      }
+
+      await queueDeviceCommandSafe_(
+        unitId,
+        'rest',
+        'timeout:' + trxId,
+        'Waktu rental habis - sesi dihentikan otomatis',
+        false
+      );
+
+      if (result && result.success) {
+        toastSuccess('Waktu ' + (unitName || unitId) + ' habis. Sesi dihentikan dan TV dimatikan.');
+        setTimeout(() => loadKasirUnits(), 700);
+      }
+      return result;
+    })();
+
+    autoFinishPromises_.set(trxId, task);
+    return task;
+  }
 
   async function loadKasirUnits() {
     const token = getToken();
@@ -660,7 +714,6 @@
     const targetEnd = estimasiMenit > 0 ? jamMasuk.getTime() + estimasiMenit * 60000 : null;
     const tarifPerJam = trx.TarifType === 'Member' ? Number(unit.TarifMember) : Number(unit.TarifPerJam);
     const produkLain = Number(trx.SubtotalMakanan || 0) + Number(trx.SubtotalMinuman || 0) + Number(trx.SubtotalAksesoris || 0);
-    let autoRestQueued = false;
 
     const tick = () => {
       const target = document.getElementById('cardTimer-' + unitId);
@@ -668,24 +721,24 @@
       if (!target) { clearInterval(interval); return; }
       if (targetEnd) {
         const diffMs = targetEnd - Date.now();
-        target.textContent = (diffMs > 0 ? '\u23F1 ' + formatHms_(diffMs) : '\u26A0 +' + formatHms_(-diffMs));
-        target.style.color = diffMs > 0 ? '' : '#fff176';
-        if (diffMs <= 0 && !autoRestQueued) {
-          autoRestQueued = true;
-          queueDeviceCommandSafe_(
-            unitId,
-            'rest',
-            'timeout:' + trx.IDTransaksi,
-            'Waktu rental habis',
-            false
-          );
+        if (diffMs > 0) {
+          target.textContent = '\u23F1 ' + formatHms_(diffMs);
+          target.style.color = diffMs <= 5 * 60000 ? '#fff176' : '';
+          if (diffMs <= 5 * 60000) queueFiveMinuteWarning_(unitId, trx.IDTransaksi);
+        } else {
+          target.textContent = '\u23F9 00:00:00';
+          target.style.color = '#fff176';
+          const badge = document.getElementById('cardStatusBadge-' + unitId);
+          if (badge) badge.textContent = 'Waktu Habis';
+          autoFinishSessionAtTimeout_(unitId, trx, unit.NamaPS || unitId);
         }
       } else {
         target.textContent = '\u23F1 ' + formatHms_(Date.now() - jamMasuk.getTime());
       }
 
       if (billEl) {
-        const elapsedJam = (Date.now() - jamMasuk.getTime()) / 3600000;
+        const billEnd = targetEnd ? Math.min(Date.now(), targetEnd) : Date.now();
+        const elapsedJam = (billEnd - jamMasuk.getTime()) / 3600000;
         const sewaSementara = elapsedJam * tarifPerJam;
         billEl.textContent = '\u{1F4B0} ' + formatRupiah(sewaSementara + produkLain);
       }
@@ -870,7 +923,9 @@
       const tarifPerJam = currentSessionTrx.TarifType === 'Member'
         ? Number(currentSessionUnitData.TarifMember)
         : Number(currentSessionUnitData.TarifPerJam);
-      const elapsedJam = (Date.now() - jamMasuk.getTime()) / 3600000;
+      const targetEndForBill = estimasiMenit > 0 ? jamMasuk.getTime() + estimasiMenit * 60000 : null;
+      const billEnd = targetEndForBill ? Math.min(Date.now(), targetEndForBill) : Date.now();
+      const elapsedJam = (billEnd - jamMasuk.getTime()) / 3600000;
       const sewaSementara = elapsedJam * tarifPerJam;
       const produkLain = Number(currentSessionTrx.SubtotalMakanan || 0)
         + Number(currentSessionTrx.SubtotalMinuman || 0)
@@ -891,25 +946,20 @@
           timerEl.classList.remove('text-danger');
           timerEl.classList.add(diffMs < 5 * 60000 ? 'text-warning' : 'text-primary');
           timerEl.classList.remove(diffMs < 5 * 60000 ? 'text-primary' : 'text-warning');
+          if (diffMs <= 5 * 60000) queueFiveMinuteWarning_(currentSessionUnit.id, currentSessionTrx.IDTransaksi);
         } else {
-          // Waktu habis -> mulai hitung waktu tambahan (overtime).
-          timerEl.textContent = '+' + formatHms_(-diffMs);
+          // Waktu dibatasi berhenti tepat di nol; transaksi diselesaikan otomatis.
+          timerEl.textContent = '00:00:00';
           timerEl.classList.remove('text-primary', 'text-warning');
           timerEl.classList.add('text-danger');
           if (!timeUpAlertShown) {
             timeUpAlertShown = true;
-            labelEl.textContent = 'Waktu Tambahan';
-            queueDeviceCommandSafe_(
-              currentSessionUnit.id,
-              'rest',
-              'timeout:' + currentSessionTrx.IDTransaksi,
-              'Waktu rental habis',
-              false
-            );
+            labelEl.textContent = 'Waktu Habis';
+            autoFinishSessionAtTimeout_(currentSessionUnit.id, currentSessionTrx, currentSessionUnit.nama);
             Swal.fire({
               icon: 'warning',
               title: 'Waktu Main Habis!',
-              text: `Sesi ${currentSessionUnit.nama} sudah melewati estimasi waktu. Segera konfirmasi ke pelanggan.`,
+              text: `Timer ${currentSessionUnit.nama} dihentikan di 00:00:00 dan perintah mematikan TV telah dikirim. Invoice tersedia di menu Invoice.`,
               confirmButtonColor: '#4f46e5'
             });
           }
@@ -1011,7 +1061,6 @@
     bootstrap.Modal.getInstance(document.getElementById('modalSession')).hide();
     toastSuccess('Transaksi selesai. Total ' + formatRupiah(res.data.grandTotal));
 
-    await printReceipt(currentSessionTrx.IDTransaksi);
     loadKasirUnits();
   }
 
@@ -1217,7 +1266,7 @@
 
   <div class="alert alert-info small">
     <i class="fa-solid fa-circle-info me-1"></i>
-    Saat sesi dimulai aplikasi mengirim perintah <strong>Bangunkan</strong>. Saat timer habis atau checkout, aplikasi mengirim <strong>Rest Mode + matikan TV</strong>.
+    Gunakan <strong>Nyalakan TV</strong> untuk menghidupkan TV saja. Saat sesi dimulai aplikasi tetap dapat membangunkan PlayStation, dan saat timer habis aplikasi mengirim <strong>Rest Mode + matikan TV</strong>.
   </div>
 
   <div class="card-glass p-3 mb-3">
@@ -1243,7 +1292,7 @@
 
 <script>
   function deviceCommandLabel_(command) {
-    return command === 'tv_wake' ? 'Nyalakan TV' : (command === 'wake' ? 'Bangunkan' : (command === 'rest' ? 'Rest Mode + TV Mati' : command));
+    return command === 'tv_wake' ? 'Nyalakan TV' : (command === 'wake' ? 'Bangunkan PS & TV' : (command === 'warning_5min' ? 'Peringatan 5 Menit' : (command === 'rest' ? 'Rest Mode + TV Mati' : command)));
   }
 
   async function loadDeviceControlPage() {
@@ -1778,6 +1827,140 @@
     if (!res.success) { toastError(res.message); return; }
     toastSuccess('Data dihapus.');
     loadExpenseTable();
+  }
+</script>
+
+          <div id="page-invoice" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+      <h6 class="fw-semibold mb-1">Invoice Transaksi</h6>
+      <div class="text-muted small">Invoice sesi yang selesai otomatis maupun melalui checkout kasir.</div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="loadInvoicePage()"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
+  </div>
+  <div class="card-glass p-3 mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-3"><label class="form-label small">Dari Tanggal</label><input type="date" class="form-control" id="invoiceStart"></div>
+      <div class="col-6 col-md-3"><label class="form-label small">Sampai Tanggal</label><input type="date" class="form-control" id="invoiceEnd"></div>
+      <div class="col-12 col-md-4"><label class="form-label small">Cari pelanggan / unit / ID</label><input class="form-control" id="invoiceSearch" placeholder="Ketik kata pencarian" oninput="renderInvoiceRows_()"></div>
+      <div class="col-12 col-md-2"><button class="btn btn-brand w-100" style="background:#4f46e5;color:#fff;" onclick="loadInvoicePage()"><i class="fa-solid fa-magnifying-glass me-1"></i>Tampilkan</button></div>
+    </div>
+  </div>
+  <div class="card-glass p-3">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle">
+        <thead><tr><th>ID</th><th>Tanggal</th><th>Pelanggan</th><th>Unit</th><th class="text-end">Total</th><th class="text-end">Invoice</th></tr></thead>
+        <tbody id="invoiceTableBody"><tr><td colspan="6" class="text-center text-muted">Memuat invoice...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  let invoiceRows_ = [];
+  let jsPdfLoadPromise_ = null;
+
+  function invoiceDefaultDates_() {
+    const end = new Date();
+    const start = new Date(end.getTime() - 30 * 86400000);
+    const iso = d => d.toISOString().slice(0, 10);
+    if (!document.getElementById('invoiceStart').value) document.getElementById('invoiceStart').value = iso(start);
+    if (!document.getElementById('invoiceEnd').value) document.getElementById('invoiceEnd').value = iso(end);
+  }
+
+  async function loadInvoicePage() {
+    invoiceDefaultDates_();
+    const body = document.getElementById('invoiceTableBody');
+    body.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Memuat invoice...</td></tr>';
+    const filter = {
+      startDate: document.getElementById('invoiceStart').value || null,
+      endDate: document.getElementById('invoiceEnd').value || null,
+      kasir: null,
+      nomorPS: null,
+      memberOnly: 'all'
+    };
+    const res = await api('getTransactionReport', getToken(), filter);
+    if (!res.success) { body.innerHTML = `<tr><td colspan="6" class="text-center text-danger">${res.message}</td></tr>`; return; }
+    invoiceRows_ = res.data.rows || [];
+    renderInvoiceRows_();
+  }
+
+  function renderInvoiceRows_() {
+    const body = document.getElementById('invoiceTableBody');
+    if (!body) return;
+    const query = (document.getElementById('invoiceSearch').value || '').toLowerCase().trim();
+    const rows = invoiceRows_.filter(row => !query || [row.IDTransaksi, row.NamaPelanggan, row.NomorPS]
+      .some(value => String(value || '').toLowerCase().includes(query)));
+    body.innerHTML = rows.map(row => `
+      <tr>
+        <td class="fw-semibold">${row.IDTransaksi}</td>
+        <td>${formatDateTimeShort(row.Tanggal)}</td>
+        <td>${row.NamaPelanggan || '-'}</td>
+        <td>${row.NomorPS || '-'}</td>
+        <td class="text-end">${formatRupiah(row.GrandTotal)}</td>
+        <td class="text-end"><button class="btn btn-sm btn-outline-primary" onclick="downloadInvoicePdf_('${row.IDTransaksi}')"><i class="fa-solid fa-download me-1"></i>PDF</button></td>
+      </tr>`).join('') || '<tr><td colspan="6" class="text-center text-muted">Invoice tidak ditemukan.</td></tr>';
+  }
+
+  function ensureJsPdf_() {
+    if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+    if (jsPdfLoadPromise_) return jsPdfLoadPromise_;
+    jsPdfLoadPromise_ = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('Pustaka PDF gagal dimuat.'));
+      document.head.appendChild(script);
+    });
+    return jsPdfLoadPromise_;
+  }
+
+  async function downloadInvoicePdf_(idTransaksi) {
+    showLoading('Membuat invoice PDF...');
+    try {
+      const [res] = await Promise.all([
+        api('getReceiptData', getToken(), idTransaksi),
+        ensureJsPdf_()
+      ]);
+      if (!res.success) throw new Error(res.message || 'Data invoice tidak ditemukan.');
+      const d = res.data;
+      const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+      let y = 18;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(18); doc.text('INVOICE', 15, y);
+      doc.setFontSize(12); doc.text(d.rental.nama || 'PS Rental Pro', 195, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      y += 7; doc.text(d.rental.alamat || '', 195, y, { align: 'right' });
+      y += 5; doc.text(d.rental.noHP || '', 195, y, { align: 'right' });
+      y += 10; doc.line(15, y, 195, y); y += 8;
+      doc.text('No. Invoice: ' + d.transaksi.IDTransaksi, 15, y);
+      doc.text('Pelanggan: ' + (d.transaksi.NamaPelanggan || '-'), 15, y + 6);
+      doc.text('Unit: ' + d.transaksi.NomorPS + ' (' + d.transaksi.JenisPS + ')', 15, y + 12);
+      doc.text('Mulai: ' + formatDateTimeShort(d.transaksi.JamMasuk), 115, y);
+      doc.text('Selesai: ' + formatDateTimeShort(d.transaksi.JamKeluar), 115, y + 6);
+      doc.text('Durasi: ' + d.transaksi.Durasi + ' menit', 115, y + 12);
+      y += 24;
+      doc.setFont('helvetica', 'bold'); doc.text('Rincian', 15, y); y += 7;
+      doc.setFont('helvetica', 'normal');
+      doc.text('Sewa PlayStation', 15, y); doc.text(formatRupiah(d.transaksi.SubtotalPS), 195, y, { align: 'right' }); y += 6;
+      (d.itemTambahan || []).forEach(item => {
+        doc.text(item.Produk + ' x' + item.Qty, 15, y);
+        doc.text(formatRupiah(item.Subtotal), 195, y, { align: 'right' });
+        y += 6;
+      });
+      doc.text('Diskon', 15, y); doc.text('- ' + formatRupiah(d.transaksi.Diskon), 195, y, { align: 'right' }); y += 6;
+      doc.text('Pajak', 15, y); doc.text(formatRupiah(d.transaksi.Pajak), 195, y, { align: 'right' }); y += 8;
+      doc.line(120, y, 195, y); y += 7;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+      doc.text('TOTAL', 120, y); doc.text(formatRupiah(d.transaksi.GrandTotal), 195, y, { align: 'right' });
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); y += 7;
+      doc.text('Pembayaran: ' + (d.transaksi.MetodePembayaran || 'Belum Dibayar'), 120, y);
+      doc.setFontSize(8); doc.text('Terima kasih telah bermain.', 105, 282, { align: 'center' });
+      doc.save('invoice-' + idTransaksi + '.pdf');
+      hideLoading();
+    } catch (err) {
+      hideLoading();
+      toastError(err.message || String(err));
+    }
   }
 </script>
 
@@ -2383,12 +2566,12 @@
     const PAGE_TITLES = {
       dashboard: 'Dashboard', kasir: 'Kasir', reservasi: 'Reservasi', playstation: 'PlayStation', perangkat: 'Kontrol Perangkat',
       pelanggan: 'Pelanggan', produk: 'Produk', pengeluaran: 'Pengeluaran',
-      laporan: 'Laporan', pengaturan: 'Pengaturan'
+      invoice: 'Invoice', laporan: 'Laporan', pengaturan: 'Pengaturan'
     };
     const PAGE_LOADERS = {
       dashboard: loadDashboard, kasir: loadKasirUnits, reservasi: loadReservasi, playstation: loadPlaystationTable, perangkat: loadDeviceControlPage,
       pelanggan: loadCustomerTable, produk: loadProdukTable, pengeluaran: loadExpenseTable,
-      laporan: () => {}, pengaturan: loadSettingsPage
+      invoice: loadInvoicePage, laporan: () => {}, pengaturan: loadSettingsPage
     };
 
     function showPage(page) {

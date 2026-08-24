@@ -164,6 +164,7 @@
     }
     #tvWrap.state-kosong { background: radial-gradient(circle at center, #14532d, #0b0c14 75%); }
     #tvWrap.state-dipakai { background: radial-gradient(circle at center, #1e1b3a, #0b0c14 75%); }
+    #tvWrap.state-warning { background: radial-gradient(circle at center, #92400e, #0b0c14 75%); animation: pulseBg 1.2s ease-in-out infinite; }
     #tvWrap.state-menunggu { background: radial-gradient(circle at center, #78350f, #0b0c14 75%); animation: pulseBg 1.6s ease-in-out infinite; }
     @keyframes pulseBg { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
     #tvWrap.state-overtime { background: radial-gradient(circle at center, #7f1d1d, #0b0c14 75%); animation: flashBg 1.2s ease-in-out infinite; }
@@ -185,6 +186,11 @@
     #tvOvertimeWarning {
       display: none; font-size: clamp(1.2rem, 4vw, 2.2rem); font-weight: 700; color: #fecaca;
       margin-top: 1.5rem; animation: pulseText 1s ease-in-out infinite;
+    }
+    #tvFiveMinuteWarning {
+      display: none; margin-top: 1.4rem; padding: .8rem 1.3rem; border-radius: 14px;
+      background: #f59e0b; color: #111827; font-size: clamp(1.1rem, 4vw, 2rem);
+      font-weight: 800; animation: pulseText 1s ease-in-out infinite;
     }
     @keyframes pulseText { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
@@ -218,6 +224,7 @@
     }
     .tv-unit-card.kosong { background: rgba(34,197,94,0.18); border-color: rgba(34,197,94,0.4); }
     .tv-unit-card.dipakai { background: rgba(79,70,229,0.22); border-color: rgba(129,140,248,0.4); }
+    .tv-unit-card.warning { background: rgba(245,158,11,0.35); border-color: rgba(253,230,138,0.8); animation: pulseBg 1.2s ease-in-out infinite; }
     .tv-unit-card.menunggu { background: rgba(217,119,6,0.28); border-color: rgba(251,191,36,0.5); animation: pulseBg 1.6s ease-in-out infinite; }
     .tv-unit-card.overtime { background: rgba(220,38,38,0.35); border-color: rgba(252,165,165,0.6); animation: flashBg 1.2s ease-in-out infinite; }
     .tv-unit-card.maintenance { background: rgba(217,119,6,0.22); border-color: rgba(251,191,36,0.4); }
@@ -242,6 +249,7 @@
     <div id="tvStateLabel"></div>
     <div id="tvTimer"></div>
     <div id="tvExtraInfo"></div>
+    <div id="tvFiveMinuteWarning">&#9888; PERINGATAN: SISA WAKTU 5 MENIT</div>
     <div id="tvOvertimeWarning">&#9888; WAKTU HABIS &mdash; SILAKAN HUBUNGI KASIR</div>
 
     <div id="tvError" style="display:none;"></div>
@@ -303,6 +311,7 @@
       }
 
       document.getElementById('tvOvertimeWarning').style.display = 'none';
+      document.getElementById('tvFiveMinuteWarning').style.display = 'none';
       overtimeTriggered = false;
       clearInterval(tickInterval);
 
@@ -345,12 +354,15 @@
             if (diff > 0) {
               document.getElementById('tvTimer').textContent = fmtHms(diff);
               wrapEl.classList.remove('state-overtime');
-              wrapEl.classList.add('state-dipakai');
+              wrapEl.classList.toggle('state-warning', diff <= 5 * 60000);
+              wrapEl.classList.toggle('state-dipakai', diff > 5 * 60000);
+              document.getElementById('tvFiveMinuteWarning').style.display = diff <= 5 * 60000 ? 'block' : 'none';
               document.getElementById('tvOvertimeWarning').style.display = 'none';
             } else {
-              document.getElementById('tvTimer').textContent = '+' + fmtHms(-diff);
-              wrapEl.classList.remove('state-dipakai');
+              document.getElementById('tvTimer').textContent = '00:00:00';
+              wrapEl.classList.remove('state-dipakai', 'state-warning');
               wrapEl.classList.add('state-overtime');
+              document.getElementById('tvFiveMinuteWarning').style.display = 'none';
               document.getElementById('tvOvertimeWarning').style.display = 'block';
             }
           }, 1000);
@@ -454,8 +466,11 @@
             if (diff > 0) {
               timerEl.textContent = fmtHmsShort(diff);
               cardEl.classList.remove('overtime');
+              cardEl.classList.toggle('warning', diff <= 5 * 60000);
+              statusEl.textContent = diff <= 5 * 60000 ? 'SISA 5 MENIT' : 'BERMAIN';
             } else {
-              timerEl.textContent = '+' + fmtHmsShort(-diff);
+              timerEl.textContent = '00:00';
+              cardEl.classList.remove('warning');
               cardEl.classList.add('overtime');
               statusEl.textContent = 'WAKTU HABIS';
             }
