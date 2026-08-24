@@ -13,14 +13,41 @@
     }
     const url = API_BASE_URL
       + '?action=' + encodeURIComponent(fnName)
-      + '&args=' + encodeURIComponent(JSON.stringify(args));
-    const res = await fetch(url, { method: 'GET' });
+      + '&args=' + encodeURIComponent(JSON.stringify(args))
+      + '&_ts=' + Date.now();
+    const res = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store'
+    });
     if (!res.ok) throw new Error('HTTP ' + res.status + ' dari server.');
     return await res.json();
   }
 
+  let activeSessionToken = '';
+
+  function readStorage_(storage, key) {
+    try { return storage.getItem(key) || ''; } catch (e) { return ''; }
+  }
+
   function getToken() {
-    return sessionStorage.getItem('psrental_token');
+    return activeSessionToken
+      || readStorage_(sessionStorage, 'psrental_token')
+      || readStorage_(localStorage, 'psrental_token');
+  }
+
+  function saveToken(token, remember) {
+    activeSessionToken = token || '';
+    try { sessionStorage.setItem('psrental_token', activeSessionToken); } catch (e) { /* memori tetap dipakai */ }
+    try {
+      if (remember) localStorage.setItem('psrental_token', activeSessionToken);
+      else localStorage.removeItem('psrental_token');
+    } catch (e) { /* abaikan jika penyimpanan dibatasi browser */ }
+  }
+
+  function clearToken() {
+    activeSessionToken = '';
+    try { sessionStorage.removeItem('psrental_token'); } catch (e) { /* abaikan */ }
+    try { localStorage.removeItem('psrental_token'); } catch (e) { /* abaikan */ }
   }
 
   function toastSuccess(msg) {
@@ -163,7 +190,7 @@
   async function doLogout() {
     const token = getToken();
     try { await api('logoutUser', token); } catch (e) { /* abaikan */ }
-    sessionStorage.removeItem('psrental_token');
+    clearToken();
     sessionStorage.removeItem('psrental_nama');
     sessionStorage.removeItem('psrental_role');
     clearTimeout(idleTimer);
