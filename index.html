@@ -229,6 +229,7 @@
     <a class="nav-link" href="#" data-page="kasir"><i class="fa-solid fa-cash-register"></i>Kasir</a>
     <a class="nav-link" href="#" data-page="reservasi"><i class="fa-solid fa-calendar-check"></i>Reservasi</a>
     <a class="nav-link" href="#" data-page="playstation"><i class="fa-solid fa-gamepad"></i>PlayStation</a>
+    <a class="nav-link role-owner-only" href="#" data-page="perangkat" style="display:none;"><i class="fa-solid fa-power-off"></i>Kontrol Perangkat</a>
     <a class="nav-link" href="#" data-page="pelanggan"><i class="fa-solid fa-users"></i>Pelanggan</a>
     <a class="nav-link" href="#" data-page="produk"><i class="fa-solid fa-box"></i>Produk</a>
     <a class="nav-link" href="#" data-page="pengeluaran"><i class="fa-solid fa-money-bill-wave"></i>Pengeluaran</a>
@@ -659,6 +660,7 @@
     const targetEnd = estimasiMenit > 0 ? jamMasuk.getTime() + estimasiMenit * 60000 : null;
     const tarifPerJam = trx.TarifType === 'Member' ? Number(unit.TarifMember) : Number(unit.TarifPerJam);
     const produkLain = Number(trx.SubtotalMakanan || 0) + Number(trx.SubtotalMinuman || 0) + Number(trx.SubtotalAksesoris || 0);
+    let autoRestQueued = false;
 
     const tick = () => {
       const target = document.getElementById('cardTimer-' + unitId);
@@ -668,6 +670,16 @@
         const diffMs = targetEnd - Date.now();
         target.textContent = (diffMs > 0 ? '\u23F1 ' + formatHms_(diffMs) : '\u26A0 +' + formatHms_(-diffMs));
         target.style.color = diffMs > 0 ? '' : '#fff176';
+        if (diffMs <= 0 && !autoRestQueued) {
+          autoRestQueued = true;
+          queueDeviceCommandSafe_(
+            unitId,
+            'rest',
+            'timeout:' + trx.IDTransaksi,
+            'Waktu rental habis',
+            false
+          );
+        }
       } else {
         target.textContent = '\u23F1 ' + formatHms_(Date.now() - jamMasuk.getTime());
       }
@@ -730,6 +742,14 @@
     const res = await api('startPlaying', token, currentWaitingTrxId);
     hideLoading();
     if (!res.success) { toastError(res.message); return; }
+
+    queueDeviceCommandSafe_(
+      currentSessionUnit.id,
+      'wake',
+      'start:' + currentWaitingTrxId,
+      'Mulai bermain',
+      true
+    );
 
     bootstrap.Modal.getInstance(document.getElementById('modalWaiting')).hide();
     toastSuccess('Sesi dimulai! Timer berjalan sekarang.');
@@ -879,6 +899,13 @@
           if (!timeUpAlertShown) {
             timeUpAlertShown = true;
             labelEl.textContent = 'Waktu Tambahan';
+            queueDeviceCommandSafe_(
+              currentSessionUnit.id,
+              'rest',
+              'timeout:' + currentSessionTrx.IDTransaksi,
+              'Waktu rental habis',
+              false
+            );
             Swal.fire({
               icon: 'warning',
               title: 'Waktu Main Habis!',
@@ -971,6 +998,14 @@
     const res = await api('finishRentalSession', token, currentSessionTrx.IDTransaksi, payload);
     hideLoading();
     if (!res.success) { toastError(res.message); return; }
+
+    queueDeviceCommandSafe_(
+      currentSessionUnit.id,
+      'rest',
+      'checkout:' + currentSessionTrx.IDTransaksi,
+      'Checkout transaksi',
+      false
+    );
 
     bootstrap.Modal.getInstance(document.getElementById('modalCheckout')).hide();
     bootstrap.Modal.getInstance(document.getElementById('modalSession')).hide();
@@ -1159,6 +1194,127 @@
     }).catch(() => {
       Swal.fire({ title: 'Link Reservasi', html: `<input class="form-control" value="${bookingUrl}" onclick="this.select()" readonly>`, confirmButtonColor: '#4f46e5' });
     });
+  }
+</script>
+
+          <div id="page-perangkat" class="page-section" style="display:none;">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h6 class="fw-semibold mb-1">Kontrol TV &amp; PlayStation</h6>
+      <div class="text-muted small">Perintah dikirim melalui pengontrol lokal di jaringan Wi-Fi rental.</div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadDeviceControlPage()"><i class="fa-solid fa-rotate me-1"></i>Refresh</button>
+      <button class="btn btn-sm btn-brand" style="background:#4f46e5;color:#fff;" onclick="createDeviceBridgeKey()"><i class="fa-solid fa-key me-1"></i>Buat Kunci Bridge</button>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="card-glass p-3 h-100"><div class="text-muted small">Status Bridge</div><div class="fw-bold fs-5" id="bridgeStatusText">Memeriksa...</div></div></div>
+    <div class="col-md-4"><div class="card-glass p-3 h-100"><div class="text-muted small">Terakhir Terhubung</div><div class="fw-semibold" id="bridgeLastSeen">-</div></div></div>
+    <div class="col-md-4"><div class="card-glass p-3 h-100"><div class="text-muted small">Antrean Perintah</div><div class="fw-bold fs-5" id="bridgePendingCount">0</div></div></div>
+  </div>
+
+  <div class="alert alert-info small">
+    <i class="fa-solid fa-circle-info me-1"></i>
+    Saat sesi dimulai aplikasi mengirim perintah <strong>Bangunkan</strong>. Saat timer habis atau checkout, aplikasi mengirim <strong>Rest Mode + matikan TV</strong>.
+  </div>
+
+  <div class="card-glass p-3 mb-3">
+    <h6 class="fw-semibold small mb-3">Kontrol Manual Unit</h6>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle">
+        <thead><tr><th>Unit</th><th>Jenis</th><th>Status Rental</th><th class="text-end">Kontrol</th></tr></thead>
+        <tbody id="deviceControlTableBody"><tr><td colspan="4" class="text-center text-muted">Memuat...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card-glass p-3">
+    <h6 class="fw-semibold small mb-3">Riwayat Perintah Terbaru</h6>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead><tr><th>Waktu</th><th>Unit</th><th>Perintah</th><th>Status</th><th>Keterangan</th></tr></thead>
+        <tbody id="deviceCommandHistory"><tr><td colspan="5" class="text-center text-muted">Belum ada perintah.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function deviceCommandLabel_(command) {
+    return command === 'wake' ? 'Bangunkan' : (command === 'rest' ? 'Rest Mode + TV Mati' : command);
+  }
+
+  async function loadDeviceControlPage() {
+    const token = getToken();
+    const [unitsRes, statusRes, historyRes] = await Promise.all([
+      api('listPlaystations', token),
+      api('getDeviceBridgeStatus', token),
+      api('listDeviceCommands', token, 30)
+    ]);
+
+    if (!unitsRes.success) { toastError(unitsRes.message); return; }
+    const tbody = document.getElementById('deviceControlTableBody');
+    tbody.innerHTML = (unitsRes.data || []).map(u => `
+      <tr>
+        <td><div class="fw-semibold">${u.NamaPS}</div><div class="text-muted small">${u.ID}</div></td>
+        <td>${u.Jenis}</td>
+        <td><span class="badge ${u.Status === 'Kosong' ? 'bg-success' : (u.Status === 'Dipakai' ? 'bg-danger' : 'bg-warning text-dark')}">${u.Status}</span></td>
+        <td class="text-end text-nowrap">
+          <button class="btn btn-sm btn-outline-success" onclick="sendManualDeviceCommand('${u.ID}','wake','${u.NamaPS}')"><i class="fa-solid fa-power-off me-1"></i>Bangunkan</button>
+          <button class="btn btn-sm btn-outline-warning" onclick="sendManualDeviceCommand('${u.ID}','rest','${u.NamaPS}')"><i class="fa-solid fa-moon me-1"></i>Rest</button>
+        </td>
+      </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">Belum ada unit.</td></tr>';
+
+    if (statusRes.success) {
+      const s = statusRes.data || {};
+      const online = !!s.online;
+      const statusEl = document.getElementById('bridgeStatusText');
+      statusEl.textContent = online ? 'Online' : (s.configured ? 'Offline' : 'Belum disiapkan');
+      statusEl.className = 'fw-bold fs-5 ' + (online ? 'text-success' : 'text-danger');
+      document.getElementById('bridgeLastSeen').textContent = s.lastSeen ? formatDateTimeShort(s.lastSeen) : '-';
+      document.getElementById('bridgePendingCount').textContent = Number(s.pendingCount) || 0;
+    }
+
+    const history = historyRes.success ? (historyRes.data || []) : [];
+    document.getElementById('deviceCommandHistory').innerHTML = history.map(c => `
+      <tr>
+        <td class="text-nowrap">${formatDateTimeShort(c.Waktu)}</td>
+        <td>${c.UnitID}</td>
+        <td>${deviceCommandLabel_(c.Perintah)}</td>
+        <td><span class="badge ${c.Status === 'Berhasil' ? 'bg-success' : (c.Status === 'Gagal' ? 'bg-danger' : 'bg-secondary')}">${c.Status}</span></td>
+        <td>${c.Pesan || c.Alasan || '-'}</td>
+      </tr>`).join('') || '<tr><td colspan="5" class="text-center text-muted">Belum ada perintah.</td></tr>';
+  }
+
+  async function sendManualDeviceCommand(unitId, command, nama) {
+    if (command === 'rest' && !(await confirmAction('Masukkan ' + nama + ' ke Rest Mode?', 'TV juga akan dimatikan setelah konsol aman.'))) return;
+    showLoading('Mengirim perintah...');
+    const data = await queueDeviceCommandSafe_(unitId, command, 'manual:' + Date.now(), 'Kontrol manual Owner', true);
+    hideLoading();
+    if (!data) return;
+    toastSuccess('Perintah ' + deviceCommandLabel_(command) + ' masuk antrean.');
+    loadDeviceControlPage();
+  }
+
+  async function createDeviceBridgeKey() {
+    if (!(await confirmAction('Buat kunci pengontrol baru?', 'Kunci lama akan langsung tidak berlaku.'))) return;
+    showLoading('Membuat kunci...');
+    const res = await api('createDeviceBridgeKey', getToken());
+    hideLoading();
+    if (!res.success) { toastError(res.message); return; }
+    const key = res.data.bridgeKey;
+    await Swal.fire({
+      icon: 'success',
+      title: 'Kunci Bridge Dibuat',
+      html: '<p class="small">Salin kunci ini ke file konfigurasi pengontrol lokal. Kunci hanya ditampilkan sekarang.</p>' +
+        '<input id="bridgeKeyResult" class="form-control" value="' + key + '" readonly onclick="this.select()">',
+      confirmButtonText: 'Salin & Tutup',
+      confirmButtonColor: '#4f46e5',
+      preConfirm: () => navigator.clipboard && navigator.clipboard.writeText(key).catch(() => {})
+    });
+    loadDeviceControlPage();
   }
 </script>
 
@@ -2121,7 +2277,7 @@
   
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.6/dist/sweetalert2.all.min.js"></script>
   <script src="config.js"></script>
-  <script src="api.js?v=20260824-mobile-session-fix"></script>
+  <script src="api.js?v=20260824-device-control"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 
@@ -2225,12 +2381,12 @@
 
     // ---------------- Router antar modul di dalam appView ----------------
     const PAGE_TITLES = {
-      dashboard: 'Dashboard', kasir: 'Kasir', reservasi: 'Reservasi', playstation: 'PlayStation',
+      dashboard: 'Dashboard', kasir: 'Kasir', reservasi: 'Reservasi', playstation: 'PlayStation', perangkat: 'Kontrol Perangkat',
       pelanggan: 'Pelanggan', produk: 'Produk', pengeluaran: 'Pengeluaran',
       laporan: 'Laporan', pengaturan: 'Pengaturan'
     };
     const PAGE_LOADERS = {
-      dashboard: loadDashboard, kasir: loadKasirUnits, reservasi: loadReservasi, playstation: loadPlaystationTable,
+      dashboard: loadDashboard, kasir: loadKasirUnits, reservasi: loadReservasi, playstation: loadPlaystationTable, perangkat: loadDeviceControlPage,
       pelanggan: loadCustomerTable, produk: loadProdukTable, pengeluaran: loadExpenseTable,
       laporan: () => {}, pengaturan: loadSettingsPage
     };
