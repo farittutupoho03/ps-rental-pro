@@ -80,9 +80,10 @@
    * supaya aman disimpan sebagai teks di sel Google Spreadsheet.
    * maxDim: dimensi terpanjang maksimum (px). quality: kualitas JPEG 0-1.
    */
-  function resizeImageToDataUrl(file, maxDim, quality) {
+  function resizeImageToDataUrl(file, maxDim, quality, maxDataUrlLength) {
     return new Promise((resolve, reject) => {
       if (!file || !file.type.startsWith('image/')) { reject('File harus berupa gambar.'); return; }
+      if (file.size > 10 * 1024 * 1024) { reject('Ukuran file maksimal 10 MB.'); return; }
 
       const reader = new FileReader();
       reader.onerror = () => reject('Gagal membaca file.');
@@ -90,14 +91,36 @@
         const img = new Image();
         img.onerror = () => reject('Gagal memuat gambar.');
         img.onload = () => {
-          let { width, height } = img;
-          if (width > height && width > maxDim) { height = Math.round(height * maxDim / width); width = maxDim; }
-          else if (height > maxDim) { width = Math.round(width * maxDim / height); height = maxDim; }
-
           const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality || 0.75));
+          const limit = Number(maxDataUrlLength) || 42000;
+          let dimension = Math.max(64, Number(maxDim) || 300);
+          let jpegQuality = Math.min(0.9, Math.max(0.4, Number(quality) || 0.75));
+          let dataUrl = '';
+
+          // GitHub Pages mengirim API lewat query GET. Karena itu hasil gambar
+          // harus cukup kecil bukan hanya untuk sel Spreadsheet, tetapi juga
+          // agar URL permintaan tidak terpotong sebelum sampai ke Apps Script.
+          for (let attempt = 0; attempt < 12; attempt++) {
+            let width = img.naturalWidth || img.width;
+            let height = img.naturalHeight || img.height;
+            const scale = Math.min(1, dimension / Math.max(width, height));
+            width = Math.max(1, Math.round(width * scale));
+            height = Math.max(1, Math.round(height * scale));
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(img, 0, 0, width, height);
+            dataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
+
+            if (dataUrl.length <= limit) { resolve(dataUrl); return; }
+            if (jpegQuality > 0.45) jpegQuality = Math.max(0.45, jpegQuality - 0.1);
+            else dimension = Math.max(64, Math.round(dimension * 0.8));
+          }
+
+          reject('Foto terlalu kompleks untuk dikirim. Silakan pilih foto lain.');
         };
         img.src = reader.result;
       };
