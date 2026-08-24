@@ -254,8 +254,9 @@
       <div class="fw-semibold small" id="navUserName">-</div>
       <div class="text-muted" style="font-size:.72rem;" id="navUserRole">-</div>
     </div>
-    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0" style="width:38px;height:38px;">
-      <i class="fa-solid fa-user"></i>
+    <div id="navUserAvatar" class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center flex-shrink-0 overflow-hidden" style="width:38px;height:38px;">
+      <img id="navUserPhoto" src="" alt="Foto profil" style="width:100%;height:100%;object-fit:cover;display:none;">
+      <i id="navUserIcon" class="fa-solid fa-user"></i>
     </div>
   </div>
 </nav>
@@ -1899,7 +1900,7 @@
     const token = getToken();
     showLoading('Mengunggah logo...');
     try {
-      const dataUrl = await resizeImageToDataUrl(file, 200, 0.8);
+      const dataUrl = await resizeImageToDataUrl(file, 160, 0.7, 6000);
       const res = await api('saveAppSettings', token, { Logo: dataUrl });
       hideLoading();
       if (!res.success) { toastError(res.message); return; }
@@ -1981,6 +1982,17 @@
         document.getElementById('userTableBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal memuat: ' + res.message + '</td></tr>';
         return;
       }
+      if (currentAppUser) {
+        const ownUser = (res.data || []).find(u =>
+          (currentAppUser.id && String(u.ID) === String(currentAppUser.id)) ||
+          (currentAppUser.username && String(u.Username).toLowerCase() === String(currentAppUser.username).toLowerCase())
+        );
+        if (ownUser) {
+          currentAppUser.id = ownUser.ID;
+          currentAppUser.fotoProfil = ownUser.FotoProfil || '';
+          applyNavUserPhoto(currentAppUser.fotoProfil);
+        }
+      }
       document.getElementById('userTableBody').innerHTML = res.data.map(u => `
         <tr>
           <td>
@@ -2061,12 +2073,18 @@
     const token = getToken();
     showLoading('Mengunggah foto...');
     try {
-      const dataUrl = await resizeImageToDataUrl(file, 300, 0.75);
+      // Jaga payload tetap kecil karena frontend GitHub Pages mengirimkannya
+      // melalui URL API Apps Script. Foto tetap tajam untuk avatar 36-38 px.
+      const dataUrl = await resizeImageToDataUrl(file, 160, 0.7, 4500);
       const res = await api('updateUserPhoto', token, userId, dataUrl);
       hideLoading();
       if (!res.success) { toastError(res.message); return; }
+      if (currentAppUser && String(currentAppUser.id) === String(userId)) {
+        currentAppUser.fotoProfil = dataUrl;
+        applyNavUserPhoto(dataUrl);
+      }
       toastSuccess('Foto profil diperbarui.');
-      loadUserTable();
+      await loadUserTable();
     } catch (err) {
       hideLoading();
       toastError(typeof err === 'string' ? err : 'Gagal mengunggah foto: ' + err);
@@ -2155,6 +2173,39 @@
       document.getElementById('loginView').style.display = 'flex';
     }
 
+    let currentAppUser = null;
+
+    function applyNavUserPhoto(dataUrl) {
+      const photo = document.getElementById('navUserPhoto');
+      const icon = document.getElementById('navUserIcon');
+      if (dataUrl) {
+        photo.src = dataUrl;
+        photo.style.display = 'block';
+        icon.style.display = 'none';
+      } else {
+        photo.removeAttribute('src');
+        photo.style.display = 'none';
+        icon.style.display = 'inline-block';
+      }
+    }
+
+    async function loadCurrentUserPhoto() {
+      if (!currentAppUser || currentAppUser.role !== 'Owner') return;
+      try {
+        const res = await api('listUsers', getToken());
+        if (!res.success) return;
+        const ownUser = (res.data || []).find(u =>
+          (currentAppUser.id && String(u.ID) === String(currentAppUser.id)) ||
+          (currentAppUser.username && String(u.Username).toLowerCase() === String(currentAppUser.username).toLowerCase())
+        );
+        if (ownUser) {
+          currentAppUser.id = ownUser.ID;
+          currentAppUser.fotoProfil = ownUser.FotoProfil || '';
+          applyNavUserPhoto(currentAppUser.fotoProfil);
+        }
+      } catch (e) { /* avatar default tetap digunakan jika gagal */ }
+    }
+
     function showAppView(user) {
       document.getElementById('bootLoading').style.display = 'none';
       document.getElementById('loginView').style.display = 'none';
@@ -2162,8 +2213,11 @@
 
       document.getElementById('navUserName').textContent = user.nama;
       document.getElementById('navUserRole').textContent = user.role;
+      currentAppUser = user;
+      applyNavUserPhoto(user.fotoProfil || '');
       if (user.role === 'Owner') {
         document.querySelectorAll('.role-owner-only').forEach(el => el.style.display = 'block');
+        loadCurrentUserPhoto();
       }
       resetIdleTimer();
       showPage('dashboard');
@@ -2221,7 +2275,7 @@
         if (remember) localStorage.setItem('psrental_username', username);
 
         toastSuccess('Login berhasil.');
-        showAppView({ nama: res.data.nama, role: res.data.role });
+        showAppView({ id: res.data.id, nama: res.data.nama, role: res.data.role, username: res.data.username });
       } catch (err) {
         hideLoading();
         toastError('Gagal terhubung ke server: ' + err);
