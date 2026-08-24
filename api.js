@@ -50,6 +50,32 @@
     try { localStorage.removeItem('psrental_token'); } catch (e) { /* abaikan */ }
   }
 
+  /**
+   * Mengirim perintah perangkat melalui antrean Apps Script.
+   * Pengontrol lokal di jaringan rental akan mengambil dan menjalankannya.
+   */
+  async function queueDeviceCommand_(unitId, command, referenceId, reason) {
+    const res = await api(
+      'queueDeviceCommand',
+      getToken(),
+      String(unitId || ''),
+      String(command || ''),
+      String(referenceId || ''),
+      String(reason || '')
+    );
+    if (!res.success) throw new Error(res.message || 'Perintah perangkat gagal dikirim.');
+    return res.data;
+  }
+
+  async function queueDeviceCommandSafe_(unitId, command, referenceId, reason, showError) {
+    try {
+      return await queueDeviceCommand_(unitId, command, referenceId, reason);
+    } catch (err) {
+      if (showError) toastError('Kontrol perangkat: ' + (err.message || err));
+      return null;
+    }
+  }
+
   function toastSuccess(msg) {
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: msg, showConfirmButton: false, timer: 2200, timerProgressBar: true });
   }
