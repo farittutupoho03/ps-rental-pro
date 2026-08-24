@@ -1,0 +1,18 @@
+{
+  "name": "ps-rental-pro-device-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pengontrol lokal PS4, PS5, dan Android TV untuk PS Rental Pro",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node bridge.js",
+    "browse": "playactor browse",
+    "login": "playactor login"
+  },
+  "dependencies": {
+    "playactor": "^0.2.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
