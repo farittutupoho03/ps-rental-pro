@@ -1243,7 +1243,7 @@
 
 <script>
   function deviceCommandLabel_(command) {
-    return command === 'wake' ? 'Bangunkan' : (command === 'rest' ? 'Rest Mode + TV Mati' : command);
+    return command === 'tv_wake' ? 'Nyalakan TV' : (command === 'wake' ? 'Bangunkan' : (command === 'rest' ? 'Rest Mode + TV Mati' : command));
   }
 
   async function loadDeviceControlPage() {
@@ -1262,7 +1262,7 @@
         <td>${u.Jenis}</td>
         <td><span class="badge ${u.Status === 'Kosong' ? 'bg-success' : (u.Status === 'Dipakai' ? 'bg-danger' : 'bg-warning text-dark')}">${u.Status}</span></td>
         <td class="text-end text-nowrap">
-          <button class="btn btn-sm btn-outline-success" onclick="sendManualDeviceCommand('${u.ID}','wake','${u.NamaPS}')"><i class="fa-solid fa-power-off me-1"></i>Bangunkan</button>
+          <button class="btn btn-sm btn-outline-primary" onclick="sendManualDeviceCommand('${u.ID}','tv_wake','${u.NamaPS}')"><i class="fa-solid fa-tv me-1"></i>Nyalakan TV</button>
           <button class="btn btn-sm btn-outline-warning" onclick="sendManualDeviceCommand('${u.ID}','rest','${u.NamaPS}')"><i class="fa-solid fa-moon me-1"></i>Rest</button>
         </td>
       </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted">Belum ada unit.</td></tr>';
