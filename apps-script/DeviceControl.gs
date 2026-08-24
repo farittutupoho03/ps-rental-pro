@@ -84,7 +84,7 @@ function queueDeviceCommand(token, unitId, command, referenceId, reason) {
   referenceId = String(referenceId || '').trim();
   reason = String(reason || '').trim();
   if (!unitId) return fail_('ID unit wajib diisi.');
-  if (['wake', 'rest', 'status'].indexOf(command) === -1) return fail_('Perintah perangkat tidak dikenal.');
+  if (['wake', 'tv_wake', 'warning_5min', 'rest', 'status'].indexOf(command) === -1) return fail_('Perintah perangkat tidak dikenal.');
 
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
